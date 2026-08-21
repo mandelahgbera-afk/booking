@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, PlaneTakeoff, Hotel, MapPin, Star, Gift, User, Info, Mail } from "lucide-react";
+import { X, PlaneTakeoff, Hotel, MapPin, Star, Gift, User, Info, Mail, LogOut } from "lucide-react";
 import { Button } from "@/components/Button";
+import type { SiteUser } from "./AppChrome";
 
 const LINKS = [
   { href: "/flights", label: "Flights", icon: PlaneTakeoff },
@@ -17,7 +18,17 @@ const LINKS = [
 
 // A bottom sheet, not a top-down dropdown — reads as an app modal instead of
 // a shrunk desktop menu.
-export const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
+export const MobileMenu = ({
+  open,
+  onClose,
+  user,
+  onSignOut,
+}: {
+  open: boolean;
+  onClose: () => void;
+  user: SiteUser | null;
+  onSignOut: () => void;
+}) => {
   return (
     <AnimatePresence>
       {open && (
@@ -62,12 +73,30 @@ export const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => vo
               ))}
             </div>
 
-            <div className="mt-4 flex gap-3 border-t border-slate-100 pt-4">
-              <Button variant="secondary" className="flex-1 gap-2">
-                <User size={16} />
-                Sign in
-              </Button>
-              <Button className="flex-1">Sign up</Button>
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              {user ? (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700">
+                    Signed in as {user.name || user.email}
+                  </span>
+                  <Button variant="secondary" className="gap-2" onClick={onSignOut}>
+                    <LogOut size={16} />
+                    Sign out
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <Link href="/login" onClick={onClose} className="flex-1">
+                    <Button variant="secondary" className="w-full gap-2">
+                      <User size={16} />
+                      Sign in
+                    </Button>
+                  </Link>
+                  <Link href="/signup" onClick={onClose} className="flex-1">
+                    <Button className="w-full">Sign up</Button>
+                  </Link>
+                </div>
+              )}
             </div>
           </motion.div>
         </>

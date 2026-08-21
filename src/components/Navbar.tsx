@@ -1,9 +1,18 @@
 import React from "react";
 import Link from "next/link";
-import { PlaneTakeoff, User, Menu } from "lucide-react";
+import { PlaneTakeoff, User, LogOut, Menu } from "lucide-react";
 import { Button } from "./Button";
+import type { SiteUser } from "./AppChrome";
 
-export const Navbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
+export const Navbar = ({
+  user,
+  onSignOut,
+  onMenuClick,
+}: {
+  user: SiteUser | null;
+  onSignOut: () => void;
+  onMenuClick?: () => void;
+}) => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 md:px-12 md:py-6 pointer-events-none">
       <div className="flex items-center">
@@ -27,11 +36,29 @@ export const Navbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
       <div className="flex items-center gap-4 pointer-events-auto">
         <div className="hidden items-center gap-4 md:flex">
-          <Button variant="ghost" className="gap-2">
-            <User size={18} />
-            Sign In
-          </Button>
-          <Button variant="primary">Sign Up</Button>
+          {user ? (
+            <>
+              <span className="max-w-[10rem] truncate text-sm font-medium text-slate-600">
+                Hi, {user.name || user.email}
+              </span>
+              <Button variant="ghost" className="gap-2" onClick={onSignOut}>
+                <LogOut size={16} />
+                Sign out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link href="/login">
+                <Button variant="ghost" className="gap-2">
+                  <User size={18} />
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/signup">
+                <Button variant="primary">Sign Up</Button>
+              </Link>
+            </>
+          )}
         </div>
         <button
           onClick={onMenuClick}
