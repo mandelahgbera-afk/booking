@@ -31,6 +31,7 @@ export const Navbar = ({
         <Link href="/hotels" className="text-sm font-medium text-slate-600 hover:text-orange-500 transition-colors">Hotels</Link>
         <Link href="/destinations" className="text-sm font-medium text-slate-600 hover:text-orange-500 transition-colors">Destinations</Link>
         <Link href="/gift-cards" className="text-sm font-medium text-slate-600 hover:text-orange-500 transition-colors">Gift Cards</Link>
+        <Link href="/partners" className="text-sm font-medium text-slate-600 hover:text-orange-500 transition-colors">Partners</Link>
         <Link href="/reviews" className="text-sm font-medium text-slate-600 hover:text-orange-500 transition-colors">Reviews</Link>
       </nav>
 

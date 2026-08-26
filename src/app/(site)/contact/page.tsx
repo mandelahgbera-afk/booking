@@ -1,7 +1,7 @@
 import { Mail, MessageCircle, Phone } from "lucide-react";
 import { ContactForm } from "@/components/ContactForm";
 
-export const metadata = { title: "Contact | AirFly" };
+export const metadata = { title: "Contact" };
 
 const CHANNELS = [
   { icon: Mail, label: "Email", value: "support@airfly.example" },

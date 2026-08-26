@@ -175,6 +175,7 @@ const defaultPlatformSettings: PlatformSettingsRow = {
   maintenance_mode: false,
   booking_enabled: true,
   service_fee_percent: 3.5,
+  email_notifications_enabled: true,
   updated_at: new Date().toISOString(),
 };
 

@@ -108,6 +108,7 @@ export type PlatformSettingsRow = {
   maintenance_mode: boolean;
   booking_enabled: boolean;
   service_fee_percent: number;
+  email_notifications_enabled: boolean;
   updated_at: string;
 };
 

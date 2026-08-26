@@ -34,7 +34,22 @@ values
   ('BA 118', 'BA', 'JFK', 'LHR', now() + interval '2 days' + time '18:05', now() + interval '3 days' + time '06:10', 'Economy', 389, 240, 12, 0, 'scheduled'),
   ('NA 905', 'NA', 'LAX', 'HND', now() + interval '4 days' + time '01:15', now() + interval '4 days' + time '05:40', 'Economy', 741, 180, 4, 0, 'scheduled'),
   ('TP 221', 'TP', 'SFO', 'SIN', now() + interval '5 days' + time '23:50', now() + interval '6 days' + time '08:30', 'Premium Economy', 812, 200, 9, 1, 'scheduled'),
-  ('EJ 340', 'EJ', 'ORD', 'DXB', now() + interval '6 days' + time '16:20', now() + interval '7 days' + time '14:05', 'Business', 655, 160, 3, 1, 'scheduled');
+  ('EJ 340', 'EJ', 'ORD', 'DXB', now() + interval '6 days' + time '16:20', now() + interval '7 days' + time '14:05', 'Business', 655, 160, 3, 1, 'scheduled'),
+  ('AF 208', 'AF', 'LAX', 'LHR', now() + interval '2 days' + time '19:10', now() + interval '3 days' + time '13:40', 'Economy', 468, 220, 15, 0, 'scheduled'),
+  ('BA 552', 'BA', 'MIA', 'LGW', now() + interval '3 days' + time '22:15', now() + interval '4 days' + time '11:50', 'Premium Economy', 431, 200, 7, 0, 'scheduled'),
+  ('NA 118', 'NA', 'SFO', 'NRT', now() + interval '3 days' + time '12:40', now() + interval '3 days' + time '16:10', 'Economy', 698, 180, 21, 0, 'scheduled'),
+  ('TP 804', 'TP', 'ORD', 'HKG', now() + interval '4 days' + time '17:05', now() + interval '4 days' + time '21:55', 'Economy', 889, 180, 5, 1, 'scheduled'),
+  ('EJ 671', 'EJ', 'JFK', 'DXB', now() + interval '5 days' + time '23:05', now() + interval '5 days' + time '20:40', 'Business', 712, 160, 2, 0, 'scheduled'),
+  ('AF 319', 'AF', 'ORD', 'MAN', now() + interval '2 days' + time '20:30', now() + interval '3 days' + time '09:55', 'Economy', 402, 220, 18, 0, 'scheduled'),
+  ('BA 773', 'BA', 'LAX', 'EDI', now() + interval '4 days' + time '16:45', now() + interval '5 days' + time '08:50', 'Economy', 519, 200, 10, 1, 'scheduled'),
+  ('NA 452', 'NA', 'JFK', 'ICN', now() + interval '6 days' + time '01:50', now() + interval '6 days' + time '06:20', 'Economy', 761, 180, 13, 1, 'scheduled'),
+  ('TP 390', 'TP', 'MIA', 'DPS', now() + interval '7 days' + time '09:15', now() + interval '7 days' + time '19:05', 'Premium Economy', 1042, 200, 6, 2, 'scheduled'),
+  ('EJ 205', 'EJ', 'SFO', 'DXB', now() + interval '5 days' + time '14:20', now() + interval '5 days' + time '17:55', 'Business', 733, 160, 4, 1, 'scheduled'),
+  ('AF 126', 'AF', 'ORD', 'LHR', now() + interval '2 days' + time '17:50', now() + interval '3 days' + time '07:05', 'Economy', 445, 220, 24, 0, 'scheduled'),
+  ('BA 340', 'BA', 'JFK', 'MAN', now() + interval '3 days' + time '20:55', now() + interval '4 days' + time '09:15', 'Economy', 398, 200, 16, 0, 'scheduled'),
+  ('NA 630', 'NA', 'SFO', 'HKG', now() + interval '4 days' + time '23:40', now() + interval '5 days' + time '06:15', 'Economy', 771, 180, 8, 0, 'scheduled'),
+  ('TP 512', 'TP', 'LAX', 'ICN', now() + interval '6 days' + time '11:30', now() + interval '6 days' + time '16:50', 'Economy', 705, 200, 19, 0, 'scheduled'),
+  ('EJ 118', 'EJ', 'MIA', 'DXB', now() + interval '7 days' + time '21:10', now() + interval '8 days' + time '20:35', 'First', 799, 160, 2, 1, 'scheduled');
 
 insert into public.gift_cards (code, amount, status, issued_by, recipient_email) values
   ('AIRFLY-DEMO-0100', 100, 'active', 'admin:seed', 'demo@airfly.test'),

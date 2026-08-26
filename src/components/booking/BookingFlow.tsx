@@ -9,6 +9,7 @@ import { PassengerForm, type Passenger } from "./PassengerForm";
 import { SeatMap } from "./SeatMap";
 import { PaymentStep, type PaymentOutcome } from "./PaymentStep";
 import { Confirmation } from "./Confirmation";
+import { sendBookingEmails } from "@/app/(site)/booking/[id]/actions";
 
 const STEPS = ["Travelers", "Seats", "Payment", "Done"] as const;
 
@@ -78,12 +79,22 @@ export const BookingFlow = ({
             total={total}
             passengers={passengers}
             paymentMode={settings.payment_mode}
-            onResult={(outcome, transactionId) => {
-              setResult({
-                outcome,
-                reference: transactionId.slice(4, 10).toUpperCase(),
-              });
+            onResult={(outcome, transactionId, method) => {
+              const reference = transactionId.slice(4, 10).toUpperCase();
+              setResult({ outcome, reference });
               setStep(3);
+
+              if (outcome === "success") {
+                sendBookingEmails({
+                  offer,
+                  passengers,
+                  seats,
+                  total,
+                  reference,
+                  method,
+                  transactionId,
+                });
+              }
             }}
           />
         )}

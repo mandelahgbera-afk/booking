@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { CreditCard, Loader2, Lock, Smartphone, SplitSquareHorizontal, Wallet } from "lucide-react";
 import { Button } from "@/components/Button";
+import { CardFields, type CardValue } from "@/components/CardFields";
+import { detectCardBrand, brandLabel } from "@/lib/card-validation";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { Passenger } from "./PassengerForm";
 import type { PlatformSettingsRow } from "@/lib/supabase/types";
@@ -41,12 +43,13 @@ export const PaymentStep = ({
   total: number;
   passengers: Passenger[];
   paymentMode: PlatformSettingsRow["payment_mode"];
-  onResult: (outcome: PaymentOutcome, transactionId: string) => void;
+  onResult: (outcome: PaymentOutcome, transactionId: string, method: string) => void;
 }) => {
   const [method, setMethod] = useState<(typeof METHODS)[number]["key"]>("card");
   const [split, setSplit] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [card, setCard] = useState({ name: "", number: "", expiry: "", cvc: "" });
+  const [card, setCard] = useState<CardValue>({ name: "", number: "", expiry: "", cvc: "" });
+  const [cardValid, setCardValid] = useState(false);
 
   const share = split && passengers.length > 1 ? total / passengers.length : total;
 
@@ -57,7 +60,13 @@ export const PaymentStep = ({
       const outcome = resolveOutcome(paymentMode);
       const transactionId = `sim_${Math.random().toString(36).slice(2, 12)}`;
       setProcessing(false);
-      onResult(outcome, transactionId);
+
+      const methodLabel =
+        method === "card"
+          ? `${brandLabel(detectCardBrand(card.number.replace(/\D/g, "")))} •••• ${card.number.replace(/\D/g, "").slice(-4)}`
+          : METHODS.find((m) => m.key === method)?.label ?? method;
+
+      onResult(outcome, transactionId, methodLabel);
     }, 1400);
   };
 
@@ -90,42 +99,7 @@ export const PaymentStep = ({
       </div>
 
       {method === "card" && (
-        <div className="flex flex-col gap-3">
-          <input
-            required
-            value={card.name}
-            onChange={(e) => setCard({ ...card, name: e.target.value })}
-            placeholder="Name on card"
-            className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-orange-400"
-          />
-          <input
-            required
-            value={card.number}
-            onChange={(e) => setCard({ ...card, number: e.target.value })}
-            placeholder="4242 4242 4242 4242"
-            inputMode="numeric"
-            maxLength={19}
-            className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-mono outline-none focus:border-orange-400"
-          />
-          <div className="flex gap-3">
-            <input
-              required
-              value={card.expiry}
-              onChange={(e) => setCard({ ...card, expiry: e.target.value })}
-              placeholder="MM/YY"
-              className="w-1/2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-mono outline-none focus:border-orange-400"
-            />
-            <input
-              required
-              value={card.cvc}
-              onChange={(e) => setCard({ ...card, cvc: e.target.value })}
-              placeholder="CVC"
-              inputMode="numeric"
-              maxLength={4}
-              className="w-1/2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-mono outline-none focus:border-orange-400"
-            />
-          </div>
-        </div>
+        <CardFields value={card} onChange={setCard} onValidChange={setCardValid} />
       )}
 
       {method !== "card" && (
@@ -158,7 +132,12 @@ export const PaymentStep = ({
             {formatCurrency(share)}
           </div>
         </div>
-        <Button type="submit" size="lg" disabled={processing} className="gap-2">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={processing || (method === "card" && !cardValid)}
+          className="gap-2"
+        >
           {processing && <Loader2 size={18} className="animate-spin" />}
           {processing ? "Processing…" : `Pay ${formatCurrency(share)}`}
         </Button>

@@ -6,6 +6,7 @@ const COLUMNS = [
     title: "Company",
     links: [
       { label: "About us", href: "/about" },
+      { label: "Airlines & partners", href: "/partners" },
       { label: "Contact", href: "/contact" },
       { label: "Reviews", href: "/reviews" },
     ],
@@ -42,8 +43,8 @@ export const Footer = () => {
               <span className="text-lg font-bold text-slate-900">AirFly</span>
             </div>
             <p className="mt-4 max-w-xs text-sm text-slate-500">
-              Modern flight booking for travelers who expect a beautifully
-              simple experience, every time.
+              A trusted third-party booking platform — we compare fares and
+              help you book faster across the airlines you already know.
             </p>
           </div>
 

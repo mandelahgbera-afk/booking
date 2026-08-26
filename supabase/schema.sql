@@ -123,8 +123,18 @@ create table if not exists public.platform_settings (
   maintenance_mode boolean not null default false,
   booking_enabled boolean not null default true,
   service_fee_percent numeric(5, 2) not null default 3.5,
+  -- Master gate in front of every simulated transactional email (booking
+  -- confirmations, receipts, gift card purchase/redeem, welcome, contact
+  -- auto-reply). Mirrors payment_mode: the admin panel is the single
+  -- conditional controller in front of these triggers, standing in for the
+  -- real approval/business logic a production system would have.
+  email_notifications_enabled boolean not null default true,
   updated_at timestamptz not null default now()
 );
+
+-- Idempotent — picks up new columns on a project that already ran an
+-- earlier version of this file, without needing a reset.
+alter table public.platform_settings add column if not exists email_notifications_enabled boolean not null default true;
 
 insert into public.platform_settings (id) values (1)
   on conflict (id) do nothing;

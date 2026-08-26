@@ -4,10 +4,14 @@ import { useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Loader2, Send } from "lucide-react";
 import { Button } from "@/components/Button";
+import { submitContactMessage } from "@/app/(site)/contact/actions";
+
+const TOPICS = ["Booking help", "Refund or cancellation", "Gift cards", "Partnership", "Something else"];
 
 export const ContactForm = () => {
   const [pending, startTransition] = useTransition();
   const [sent, setSent] = useState(false);
+  const [form, setForm] = useState({ name: "", email: "", topic: "", message: "" });
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-8">
@@ -24,10 +28,14 @@ export const ContactForm = () => {
             </div>
             <h3 className="text-lg font-semibold text-slate-900">Message sent</h3>
             <p className="max-w-xs text-sm text-slate-500">
-              Thanks for reaching out — our support team typically replies within a few hours.
+              Thanks for reaching out — check your inbox for a confirmation, and our support team
+              typically replies within a few hours.
             </p>
             <button
-              onClick={() => setSent(false)}
+              onClick={() => {
+                setSent(false);
+                setForm({ name: "", email: "", topic: "", message: "" });
+              }}
               className="mt-2 text-sm font-medium text-orange-500 hover:underline"
             >
               Send another message
@@ -41,7 +49,7 @@ export const ContactForm = () => {
             onSubmit={(e) => {
               e.preventDefault();
               startTransition(async () => {
-                await new Promise((r) => setTimeout(r, 900));
+                await submitContactMessage(form);
                 setSent(true);
               });
             }}
@@ -50,33 +58,38 @@ export const ContactForm = () => {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <input
                 required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Your name"
                 className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-orange-400"
               />
               <input
                 required
                 type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
                 placeholder="Email"
                 className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-orange-400"
               />
             </div>
             <select
               required
-              defaultValue=""
+              value={form.topic}
+              onChange={(e) => setForm({ ...form, topic: e.target.value })}
               className="rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-600 outline-none focus:border-orange-400"
             >
               <option value="" disabled>
                 What&apos;s this about?
               </option>
-              <option>Booking help</option>
-              <option>Refund or cancellation</option>
-              <option>Gift cards</option>
-              <option>Partnership</option>
-              <option>Something else</option>
+              {TOPICS.map((t) => (
+                <option key={t}>{t}</option>
+              ))}
             </select>
             <textarea
               required
               rows={5}
+              value={form.message}
+              onChange={(e) => setForm({ ...form, message: e.target.value })}
               placeholder="How can we help?"
               className="resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-orange-400"
             />

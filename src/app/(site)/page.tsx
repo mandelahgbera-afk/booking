@@ -1,4 +1,5 @@
 import { Hero } from "@/components/landing/Hero";
+import { DeparturesBoard } from "@/components/landing/DeparturesBoard";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { Destinations } from "@/components/landing/Destinations";
 import { PopularRoutes } from "@/components/landing/PopularRoutes";
@@ -12,6 +13,7 @@ export default function Home() {
   return (
     <>
       <Hero />
+      <DeparturesBoard />
       <HowItWorks />
       <Destinations />
       <PopularRoutes />

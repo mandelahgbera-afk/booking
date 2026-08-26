@@ -7,6 +7,7 @@ import { AlertCircle, CheckCircle2, Loader2, UserPlus } from "lucide-react";
 import { Button } from "@/components/Button";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/client";
+import { sendWelcomeEmail } from "./actions";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -44,6 +45,7 @@ export default function SignupPage() {
 
     if (data.session) {
       // Email confirmation is off for this project — signed in immediately.
+      sendWelcomeEmail(name, email);
       router.push("/");
       router.refresh();
       return;

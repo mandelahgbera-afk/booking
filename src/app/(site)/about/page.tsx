@@ -1,8 +1,10 @@
 import Image from "next/image";
+import Link from "next/link";
 import { stats } from "@/lib/mock-data";
-import { Compass, HeartHandshake, ShieldCheck, Sparkles } from "lucide-react";
+import { partnerNetwork } from "@/lib/partners";
+import { Compass, HeartHandshake, ShieldCheck, Sparkles, ArrowRight, Globe2 } from "lucide-react";
 
-export const metadata = { title: "About | AirFly" };
+export const metadata = { title: "About" };
 
 const VALUES = [
   {
@@ -44,6 +46,10 @@ export default function AboutPage() {
           sites — and grew into a platform travelers actually enjoy using,
           across the USA, Asia, and the UK.
         </p>
+        <p className="mx-auto mt-3 max-w-xl text-sm font-medium text-slate-400">
+          Important: we&apos;re a booking platform, not an airline — we don&apos;t
+          operate flights ourselves.
+        </p>
       </div>
 
       <section className="mx-auto grid max-w-5xl grid-cols-2 gap-8 px-6 py-16 sm:grid-cols-4">
@@ -69,6 +75,49 @@ export default function AboutPage() {
               <p className="mt-2 text-sm leading-relaxed text-slate-500">{v.description}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-6 pb-16">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 sm:p-10">
+          <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <span className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-orange-500">
+                <Globe2 size={14} /> Our network
+              </span>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                A trusted third party, not a single carrier
+              </h2>
+              <p className="mt-2 max-w-lg text-sm text-slate-500">
+                We compare and book across major airlines and booking platforms
+                in the United States, Canada, the United Kingdom, and Germany —
+                so you don&apos;t have to check a dozen sites yourself.
+              </p>
+            </div>
+            <Link
+              href="/partners"
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full gradient-primary px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-orange-500/30"
+            >
+              View full network <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          <div className="mt-8 flex flex-wrap gap-2">
+            {partnerNetwork
+              .flatMap((c) => c.airlines.flatMap((g) => g.names))
+              .slice(0, 16)
+              .map((name) => (
+                <span
+                  key={name}
+                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600"
+                >
+                  {name}
+                </span>
+              ))}
+            <span className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white">
+              +{partnerNetwork.reduce((s, c) => s + c.airlines.reduce((n, g) => n + g.names.length, 0), 0) - 16} more
+            </span>
+          </div>
         </div>
       </section>
 

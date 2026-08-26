@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, PlaneTakeoff, Hotel, MapPin, Star, Gift, User, Info, Mail, LogOut } from "lucide-react";
+import { X, PlaneTakeoff, Hotel, MapPin, Star, Gift, User, Info, Mail, LogOut, Globe2 } from "lucide-react";
 import { Button } from "@/components/Button";
 import type { SiteUser } from "./AppChrome";
 
@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/hotels", label: "Hotels", icon: Hotel },
   { href: "/destinations", label: "Destinations", icon: MapPin },
   { href: "/gift-cards", label: "Gift cards & wallet", icon: Gift },
+  { href: "/partners", label: "Airlines & partners", icon: Globe2 },
   { href: "/reviews", label: "Reviews", icon: Star },
   { href: "/about", label: "About us", icon: Info },
   { href: "/contact", label: "Contact", icon: Mail },

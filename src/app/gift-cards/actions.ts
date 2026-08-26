@@ -6,6 +6,8 @@ import { createPublicClient } from "@/lib/supabase/public";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { logAdminAction } from "@/lib/data";
 import { WALLET_EMAIL_COOKIE, WALLET_MOCK_BALANCE_COOKIE } from "@/lib/wallet";
+import { sendEmail } from "@/lib/email/send";
+import { giftCardPurchasedEmail, giftCardRedeemedEmail } from "@/lib/email/templates";
 
 // Demo codes that work even with zero Supabase setup, so the scanner/redeem
 // flow is fully try-able out of the box (matches supabase/seed.sql).
@@ -21,27 +23,42 @@ export type PurchaseResult =
 
 export async function purchaseGiftCard(
   amount: number,
+  buyerEmail: string,
   recipientEmail?: string
 ): Promise<PurchaseResult> {
+  let code: string;
+  let finalAmount = amount;
+
   if (!isSupabaseConfigured) {
     // Demo code, not persisted — clearly a preview experience, but the flow
-    // (payment step → generated code → QR) still works end to end.
-    const code = `AIRFLY-PRVW-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    return { ok: true, code, amount };
+    // (payment step → generated code → QR → email) still works end to end.
+    code = `AIRFLY-PRVW-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  } else {
+    try {
+      const supabase = createPublicClient();
+      const { data, error } = await supabase.rpc("issue_gift_card", {
+        p_amount: amount,
+        p_recipient_email: recipientEmail || null,
+      });
+      if (error || !data) throw error ?? new Error("No card returned");
+      code = data.code;
+      finalAmount = Number(data.amount);
+    } catch {
+      code = `AIRFLY-PRVW-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    }
   }
 
-  try {
-    const supabase = createPublicClient();
-    const { data, error } = await supabase.rpc("issue_gift_card", {
-      p_amount: amount,
-      p_recipient_email: recipientEmail || null,
-    });
-    if (error || !data) throw error ?? new Error("No card returned");
-    return { ok: true, code: data.code, amount: Number(data.amount) };
-  } catch {
-    const code = `AIRFLY-PRVW-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    return { ok: true, code, amount };
+  // Best-effort — the purchase already succeeded above, so an email failure
+  // here never blocks showing the buyer their code.
+  const gifting = recipientEmail && recipientEmail.toLowerCase() !== buyerEmail.toLowerCase();
+  const buyerCopy = giftCardPurchasedEmail({ code, amount: finalAmount });
+  await sendEmail({ to: buyerEmail, ...buyerCopy });
+  if (gifting) {
+    const giftCopy = giftCardPurchasedEmail({ code, amount: finalAmount, fromName: buyerEmail.split("@")[0] });
+    await sendEmail({ to: recipientEmail!, ...giftCopy });
   }
+
+  return { ok: true, code, amount: finalAmount };
 }
 
 export type RedeemResult = { ok: boolean; message: string; amount?: number };
@@ -68,6 +85,11 @@ export async function redeemGiftCard(rawCode: string, email: string): Promise<Re
           path: "/",
         });
         revalidatePath("/gift-cards");
+
+        const newBalance = await getWalletBalance(email);
+        const receipt = giftCardRedeemedEmail({ amount: data.amount, newBalance });
+        await sendEmail({ to: email, ...receipt });
+
         return { ok: true, message: data.message, amount: data.amount };
       }
       return { ok: false, message: data?.message ?? "That code couldn't be redeemed." };
@@ -91,6 +113,10 @@ export async function redeemGiftCard(rawCode: string, email: string): Promise<Re
     path: "/",
   });
   revalidatePath("/gift-cards");
+
+  const receipt = giftCardRedeemedEmail({ amount: mock.amount, newBalance: current + mock.amount });
+  await sendEmail({ to: email, ...receipt });
+
   return { ok: true, message: "Gift card redeemed — your balance has been updated.", amount: mock.amount };
 }
 

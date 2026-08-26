@@ -1,6 +1,6 @@
 import { LegalPage } from "@/components/LegalPage";
 
-export const metadata = { title: "Terms of Service | AirFly" };
+export const metadata = { title: "Terms of Service" };
 
 export default function TermsPage() {
   return (

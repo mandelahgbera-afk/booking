@@ -105,6 +105,13 @@ export const PlatformSettingsForm = ({ settings }: { settings: PlatformSettingsR
             disabled={pending}
             onChange={(v) => save({ maintenance_mode: v })}
           />
+          <ToggleRow
+            label="Email notifications"
+            description="Master switch for every transactional email — booking confirmations, receipts, gift card purchase/redeem, welcome, contact replies. Off means nothing sends, full stop."
+            checked={form.email_notifications_enabled}
+            disabled={pending}
+            onChange={(v) => save({ email_notifications_enabled: v })}
+          />
         </div>
       </div>
 

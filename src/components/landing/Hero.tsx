@@ -15,7 +15,7 @@ export const Hero = () => {
 
       <div className="relative mx-auto flex max-w-6xl flex-col items-center px-6 text-center">
         <span className="glass mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold text-slate-600">
-          ✈️ Loved by 1.8M+ travelers worldwide
+          ✈️ Booking across 50+ airlines · Not affiliated with any single carrier
         </span>
 
         <h1 className="max-w-3xl text-4xl font-bold leading-[1.1] tracking-tight text-slate-900 sm:text-6xl">
@@ -23,8 +23,9 @@ export const Hero = () => {
         </h1>
 
         <p className="mt-5 max-w-xl text-base text-slate-500 sm:text-lg">
-          Compare real-time fares across the USA, Asia, and the UK — then book,
-          split payment, and manage every trip from one beautifully simple place.
+          We&apos;re a trusted third-party booking platform — compare real-time fares
+          across the USA, Asia, and the UK from the airlines you already know, then
+          book, split payment, and manage every trip from one beautifully simple place.
         </p>
 
         <div className="mt-10 w-full">

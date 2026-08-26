@@ -6,6 +6,7 @@ import QRCode from "qrcode";
 import confetti from "canvas-confetti";
 import { Check, Copy, CreditCard, Gift, Loader2 } from "lucide-react";
 import { Button } from "@/components/Button";
+import { CardFields, type CardValue } from "@/components/CardFields";
 import { cn, formatCurrency } from "@/lib/utils";
 import { purchaseGiftCard } from "@/app/gift-cards/actions";
 
@@ -17,10 +18,13 @@ export const PurchaseFlow = () => {
   const [step, setStep] = useState<Step>("amount");
   const [amount, setAmount] = useState(100);
   const [customAmount, setCustomAmount] = useState("");
+  const [buyerEmail, setBuyerEmail] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [pending, startTransition] = useTransition();
   const [issued, setIssued] = useState<{ code: string; amount: number } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [card, setCard] = useState<CardValue>({ name: "", number: "", expiry: "", cvc: "" });
+  const [cardValid, setCardValid] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const effectiveAmount = customAmount ? Number(customAmount) : amount;
@@ -28,7 +32,7 @@ export const PurchaseFlow = () => {
   const handlePay = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
-      const res = await purchaseGiftCard(effectiveAmount, recipientEmail || undefined);
+      const res = await purchaseGiftCard(effectiveAmount, buyerEmail, recipientEmail || undefined);
       if (res.ok) {
         setIssued({ code: res.code, amount: res.amount });
         setStep("success");
@@ -115,6 +119,14 @@ export const PurchaseFlow = () => {
         </div>
 
         <input
+          required
+          type="email"
+          value={buyerEmail}
+          onChange={(e) => setBuyerEmail(e.target.value)}
+          placeholder="Your email (we'll send the code here)"
+          className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-orange-400"
+        />
+        <input
           type="email"
           value={recipientEmail}
           onChange={(e) => setRecipientEmail(e.target.value)}
@@ -122,29 +134,14 @@ export const PurchaseFlow = () => {
           className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-orange-400"
         />
 
-        <input
-          required
-          placeholder="4242 4242 4242 4242"
-          inputMode="numeric"
-          maxLength={19}
-          className="rounded-xl border border-slate-200 px-4 py-3 font-mono text-sm outline-none focus:border-orange-400"
-        />
-        <div className="flex gap-3">
-          <input
-            required
-            placeholder="MM/YY"
-            className="w-1/2 rounded-xl border border-slate-200 px-4 py-3 font-mono text-sm outline-none focus:border-orange-400"
-          />
-          <input
-            required
-            placeholder="CVC"
-            inputMode="numeric"
-            maxLength={4}
-            className="w-1/2 rounded-xl border border-slate-200 px-4 py-3 font-mono text-sm outline-none focus:border-orange-400"
-          />
-        </div>
+        <CardFields value={card} onChange={setCard} onValidChange={setCardValid} />
 
-        <Button type="submit" size="lg" disabled={pending} className="w-full gap-2">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={pending || !cardValid || !buyerEmail.includes("@")}
+          className="w-full gap-2"
+        >
           {pending && <Loader2 size={18} className="animate-spin" />}
           {pending ? "Processing…" : `Pay ${formatCurrency(effectiveAmount)}`}
         </Button>

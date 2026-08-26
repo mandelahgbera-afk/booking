@@ -3,7 +3,7 @@ import { Hotel, Bell } from "lucide-react";
 import { Button } from "@/components/Button";
 import { ShaderBackground } from "@/components/gift-cards/ShaderBackground";
 
-export const metadata = { title: "Hotels | AirFly" };
+export const metadata = { title: "Hotels" };
 
 export default function HotelsPage() {
   return (
