@@ -150,6 +150,47 @@ export async function getFlightOffer(id: string): Promise<FlightOffer | null> {
   }, fallback);
 }
 
+export type AdminReview = {
+  id: string;
+  name: string;
+  role: string | null;
+  avatar: string;
+  quote: string;
+  rating: number;
+  featured: boolean;
+  createdAt: string;
+};
+
+export async function getAdminReviews(): Promise<AdminReview[]> {
+  return safeSupabase(async () => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("reviews")
+      .select("id, name, role, avatar_url, quote, rating, is_featured, created_at")
+      .order("created_at", { ascending: false });
+    if (error || !data) throw error ?? new Error("empty");
+    return data.map((r) => ({
+      id: r.id,
+      name: r.name,
+      role: r.role,
+      avatar: r.avatar_url ?? mockTestimonials[0].avatar,
+      quote: r.quote,
+      rating: r.rating,
+      featured: r.is_featured,
+      createdAt: r.created_at,
+    }));
+  }, mockTestimonials.map((t, i) => ({
+    id: `mock-${i}`,
+    name: t.name,
+    role: t.role,
+    avatar: t.avatar,
+    quote: t.quote,
+    rating: t.rating,
+    featured: true,
+    createdAt: new Date().toISOString(),
+  })));
+}
+
 export async function getTestimonials(): Promise<Testimonial[]> {
   return safeSupabase(async () => {
     const supabase = createPublicClient();

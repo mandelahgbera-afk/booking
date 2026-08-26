@@ -89,9 +89,10 @@ export default function AboutPage() {
                 A trusted third party, not a single carrier
               </h2>
               <p className="mt-2 max-w-lg text-sm text-slate-500">
-                We compare and book across major airlines and booking platforms
-                in the United States, Canada, the United Kingdom, and Germany —
-                so you don&apos;t have to check a dozen sites yourself.
+                We compare and book across major airlines, rail operators, and
+                coach companies in the United States, Canada, the United
+                Kingdom, Germany, and the rest of Europe — so you don&apos;t
+                have to check a dozen sites yourself.
               </p>
             </div>
             <Link
@@ -104,7 +105,11 @@ export default function AboutPage() {
 
           <div className="mt-8 flex flex-wrap gap-2">
             {partnerNetwork
-              .flatMap((c) => c.airlines.flatMap((g) => g.names))
+              .flatMap((c) => [
+                ...(c.airlines ?? []).flatMap((g) => g.names),
+                ...(c.trains ?? []).flatMap((g) => g.names),
+                ...(c.buses ?? []).flatMap((g) => g.names),
+              ])
               .slice(0, 16)
               .map((name) => (
                 <span
@@ -115,7 +120,16 @@ export default function AboutPage() {
                 </span>
               ))}
             <span className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white">
-              +{partnerNetwork.reduce((s, c) => s + c.airlines.reduce((n, g) => n + g.names.length, 0), 0) - 16} more
+              +
+              {partnerNetwork.reduce(
+                (s, c) =>
+                  s +
+                  (c.airlines ?? []).reduce((n, g) => n + g.names.length, 0) +
+                  (c.trains ?? []).reduce((n, g) => n + g.names.length, 0) +
+                  (c.buses ?? []).reduce((n, g) => n + g.names.length, 0),
+                0
+              ) - 16}{" "}
+              more
             </span>
           </div>
         </div>

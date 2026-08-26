@@ -5,16 +5,20 @@
 // not as exclusive commercial partnerships.
 //
 // This list is intentionally separate from src/lib/mock-data.ts — the
-// fictional airlines there (AirFly Prime, British Skyways, etc.) power the
-// simulated booking/payment flow, so no real airline's name ends up attached
-// to a fake e-ticket or a fake charge. This file is purely informational.
+// fictional airlines/rail/coach operators there power the simulated
+// booking/payment flow, so no real company's name ends up attached to a
+// fake e-ticket or a fake charge. This file is purely informational.
+
+export type PartnerCategoryGroup = { category: string; names: string[] };
 
 export type PartnerCountry = {
   code: string;
   name: string;
   flag: string;
-  airlines: { category: string; names: string[] }[];
-  platforms: { category: string; names: string[] }[];
+  airlines?: PartnerCategoryGroup[];
+  platforms?: PartnerCategoryGroup[];
+  trains?: PartnerCategoryGroup[];
+  buses?: PartnerCategoryGroup[];
 };
 
 export const partnerNetwork: PartnerCountry[] = [
@@ -48,6 +52,21 @@ export const partnerNetwork: PartnerCountry[] = [
       { category: "Online travel agencies", names: ["Expedia", "Priceline", "Orbitz", "Travelocity", "CheapOair", "Hotwire"] },
       { category: "Metasearch", names: ["Google Flights", "Kayak", "Skyscanner", "Momondo"] },
     ],
+    trains: [
+      { category: "Main intercity operator", names: ["Amtrak"] },
+      {
+        category: "Private & regional rail",
+        names: ["Brightline", "Alaska Railroad", "Metra", "LIRR", "Metro-North", "NJ Transit", "Caltrain", "Sounder", "MBTA Commuter Rail"],
+      },
+      { category: "Booking platforms", names: ["Amtrak.com / app", "Wanderu", "Busbud", "Railbookers"] },
+    ],
+    buses: [
+      {
+        category: "Major intercity operators",
+        names: ["Greyhound", "FlixBus USA", "Megabus", "Peter Pan Bus Lines", "Trailways", "Jefferson Lines", "OurBus", "Coach USA", "RedCoach", "Vamoose"],
+      },
+      { category: "Booking platforms", names: ["Wanderu", "Busbud", "CheckMyBus", "Direct operator sites/apps"] },
+    ],
   },
   {
     code: "CA",
@@ -66,6 +85,21 @@ export const partnerNetwork: PartnerCountry[] = [
       { category: "Metasearch", names: ["Google Flights", "Kayak", "Skyscanner", "Hopper"] },
       { category: "Vacation packages", names: ["Air Canada Vacations", "WestJet Vacations", "Sunwing Vacations", "Transat"] },
     ],
+    trains: [
+      { category: "National operator", names: ["VIA Rail"] },
+      {
+        category: "Other rail services",
+        names: ["Rocky Mountaineer", "Amtrak Cascades", "GO Transit", "Exo", "West Coast Express", "Ontario Northland"],
+      },
+      { category: "Booking platforms", names: ["VIA Rail website/app", "Wanderu", "Direct regional operator sites"] },
+    ],
+    buses: [
+      {
+        category: "Intercity operators",
+        names: ["FlixBus", "Rider Express", "Ontario Northland", "Orléans Express", "Maritime Bus", "Pacific Western", "Ebus", "Red Arrow", "Megabus"],
+      },
+      { category: "Booking platforms", names: ["Busbud", "Wanderu", "Direct operator sites"] },
+    ],
   },
   {
     code: "UK",
@@ -81,6 +115,20 @@ export const partnerNetwork: PartnerCountry[] = [
       { category: "Metasearch", names: ["Skyscanner", "Kayak", "Google Flights", "Momondo"] },
       { category: "Holiday packages", names: ["TUI", "Jet2holidays", "British Airways Holidays", "Virgin Holidays", "easyJet holidays"] },
     ],
+    trains: [
+      {
+        category: "National Rail operating companies",
+        names: ["Avanti West Coast", "LNER", "Great Western Railway", "CrossCountry", "TransPennine Express", "Northern", "ScotRail", "Transport for Wales", "Greater Anglia", "Southeastern", "Southern / Thameslink"],
+      },
+      {
+        category: "Booking platforms",
+        names: ["Trainline", "National Rail Enquiries", "TrainSplit", "Split My Fare", "Railsmartr", "Omio", "Rail Europe"],
+      },
+    ],
+    buses: [
+      { category: "Major coach operators", names: ["National Express", "Megabus UK", "FlixBus", "Scottish Citylink", "Oxford Tube", "Stagecoach", "First Bus"] },
+      { category: "Booking platforms", names: ["National Express", "Megabus", "Trainline", "Omio", "Busbud", "CheckMyBus"] },
+    ],
   },
   {
     code: "DE",
@@ -95,6 +143,37 @@ export const partnerNetwork: PartnerCountry[] = [
       { category: "Online travel agencies", names: ["Expedia.de", "Opodo.de", "Fluege.de", "Check24 Flüge", "Lastminute.de"] },
       { category: "Metasearch", names: ["Skyscanner.de", "Kayak.de", "Google Flights", "Idealo Flüge"] },
       { category: "Holiday packages", names: ["TUI.de", "DERTOUR", "Alltours", "Schauinsland-Reisen"] },
+    ],
+    trains: [
+      { category: "National operator", names: ["Deutsche Bahn (DB)"] },
+      { category: "Low-cost & private rail", names: ["FlixTrain", "Metronom", "erixx", "Abellio", "National Express Germany"] },
+      { category: "Booking platforms", names: ["DB Navigator", "Trainline", "Omio", "FlixTrain", "HappyRail"] },
+    ],
+    buses: [
+      { category: "Main operators", names: ["FlixBus", "BlaBlaCar Bus", "IC Bus", "RegioJet"] },
+      { category: "Booking platforms", names: ["FlixBus", "Omio", "CheckMyBus", "Busbud", "ComparaBUS"] },
+    ],
+  },
+  {
+    code: "EU",
+    name: "Europe-wide",
+    flag: "🇪🇺",
+    trains: [
+      {
+        category: "Cross-border aggregators",
+        names: ["Trainline", "Omio", "Rail Europe", "Eurail / Interrail", "HappyRail", "Save A Train", "Kombo"],
+      },
+      {
+        category: "National operator apps worth having",
+        names: ["SNCF Connect (France)", "Trenitalia / Italo (Italy)", "Renfe (Spain)", "ÖBB (Austria)", "SBB (Switzerland)", "NS / NS International (Netherlands)", "SNCB/NMBS (Belgium)", "SJ (Sweden)", "Vy (Norway)", "CP (Portugal)"],
+      },
+    ],
+    buses: [
+      { category: "Major networks", names: ["FlixBus", "BlaBlaCar Bus", "Alsa", "RegioJet", "Leo Express", "Itabus / Marino", "Union Ivkoni"] },
+      { category: "Aggregators", names: ["Omio", "Busbud", "CheckMyBus", "ComparaBUS", "GetByBus"] },
+    ],
+    platforms: [
+      { category: "Multimodal planning", names: ["Rome2Rio", "Google Maps", "Moovit"] },
     ],
   },
 ];
