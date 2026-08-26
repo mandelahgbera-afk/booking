@@ -1,18 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
-import { AlertCircle, CheckCircle2, Info } from "lucide-react";
+import { AlertCircle, CheckCircle2, Info, ShieldAlert, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { updatePlatformSettings } from "@/app/admin/(dashboard)/settings/actions";
 import type { PlatformSettingsRow } from "@/lib/supabase/types";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
-const PAYMENT_MODES: { value: PlatformSettingsRow["payment_mode"]; label: string; hint: string }[] = [
+// Quick automated presets — resolve every card payment the same way,
+// instantly, useful for demoing a specific flow (e.g. "what does a decline
+// email look like") without babysitting a review queue.
+const AUTO_MODES: { value: PlatformSettingsRow["payment_mode"]; label: string; hint: string }[] = [
   { value: "simulate_success", label: "Always succeed", hint: "Every payment resolves as successful." },
   { value: "simulate_pending", label: "Always pending", hint: "Every payment sits in a pending state." },
   { value: "simulate_fail", label: "Always fail", hint: "Every payment is declined — useful for testing error states." },
   { value: "random", label: "Randomized", hint: "Mostly succeeds, with some pending/failed for realism." },
-  { value: "live", label: "Live (Stripe)", hint: "Not yet connected — reserved for the real payment gateway." },
 ];
 
 export const PlatformSettingsForm = ({ settings }: { settings: PlatformSettingsRow }) => {
@@ -64,27 +67,78 @@ export const PlatformSettingsForm = ({ settings }: { settings: PlatformSettingsR
       <div className="rounded-2xl border border-slate-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-slate-900">Mock payment gateway</h2>
         <p className="mt-1 text-xs text-slate-400">
-          Controls how every checkout on the site resolves, without touching a real processor.
+          Controls how every card checkout on the site resolves, without touching a real processor.
         </p>
 
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {PAYMENT_MODES.map((mode) => (
-            <button
-              key={mode.value}
-              disabled={pending}
-              onClick={() => save({ payment_mode: mode.value })}
-              className={cn(
-                "rounded-xl border p-4 text-left transition-colors disabled:opacity-60",
-                form.payment_mode === mode.value
-                  ? "border-orange-500 bg-orange-50"
-                  : "border-slate-200 hover:border-slate-300"
-              )}
-            >
-              <div className="text-sm font-semibold text-slate-900">{mode.label}</div>
-              <div className="mt-1 text-xs text-slate-500">{mode.hint}</div>
-            </button>
-          ))}
+        <button
+          disabled={pending}
+          onClick={() => save({ payment_mode: "manual_review" })}
+          className={cn(
+            "mt-4 flex w-full items-start gap-3 rounded-xl border-2 p-4 text-left transition-colors disabled:opacity-60",
+            form.payment_mode === "manual_review"
+              ? "border-orange-500 bg-orange-50"
+              : "border-dashed border-slate-300 hover:border-slate-400"
+          )}
+        >
+          <ShieldAlert size={18} className="mt-0.5 shrink-0 text-orange-500" />
+          <div>
+            <div className="text-sm font-semibold text-slate-900">Manual review (recommended)</div>
+            <div className="mt-1 text-xs text-slate-500">
+              Every card payment holds as pending until you approve, decline, or
+              decline with an alternate-payment recommendation for that specific
+              transaction, from the{" "}
+              <Link href="/admin/transactions" className="font-medium text-orange-600 underline">
+                Transaction Review
+              </Link>{" "}
+              queue. The traveler&apos;s screen updates live, no reload.
+            </div>
+          </div>
+        </button>
+
+        <div className="mt-4">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Quick presets — auto-resolve instantly
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {AUTO_MODES.map((mode) => (
+              <button
+                key={mode.value}
+                disabled={pending}
+                onClick={() => save({ payment_mode: mode.value })}
+                className={cn(
+                  "rounded-xl border p-4 text-left transition-colors disabled:opacity-60",
+                  form.payment_mode === mode.value
+                    ? "border-orange-500 bg-orange-50"
+                    : "border-slate-200 hover:border-slate-300"
+                )}
+              >
+                <div className="text-sm font-semibold text-slate-900">{mode.label}</div>
+                <div className="mt-1 text-xs text-slate-500">{mode.hint}</div>
+              </button>
+            ))}
+          </div>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6">
+        <button
+          disabled={pending}
+          onClick={() => save({ payment_mode: "live" })}
+          className={cn(
+            "flex w-full items-center justify-between rounded-xl border p-4 text-left transition-colors disabled:opacity-60",
+            form.payment_mode === "live"
+              ? "border-orange-500 bg-orange-50"
+              : "border-slate-200 hover:border-slate-300"
+          )}
+        >
+          <div>
+            <div className="text-sm font-semibold text-slate-900">Live (Stripe)</div>
+            <div className="mt-1 text-xs text-slate-500">
+              Not yet connected — reserved for the real payment gateway, independent of the mock modes above.
+            </div>
+          </div>
+          <ArrowRight size={16} className="shrink-0 text-slate-300" />
+        </button>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6">

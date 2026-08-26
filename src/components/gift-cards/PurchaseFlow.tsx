@@ -8,15 +8,25 @@ import { AlertCircle, Bitcoin, Check, Copy, CreditCard, Gift, Loader2, RefreshCw
 import { Button } from "@/components/Button";
 import { CardFields, type CardValue } from "@/components/CardFields";
 import { CryptoPayment } from "./CryptoPayment";
+import { PendingPaymentReview } from "@/components/PendingPaymentReview";
 import { cn, formatCurrency } from "@/lib/utils";
 import { purchaseGiftCard } from "@/app/gift-cards/actions";
+import { submitPaymentRequest } from "@/app/payment-requests/actions";
+import type { PlatformSettingsRow } from "@/lib/supabase/types";
 
 const TIERS = [50, 100, 250, 500];
 
-type Step = "amount" | "payment" | "success";
+type Step = "amount" | "payment" | "reviewing" | "success";
 
-export const PurchaseFlow = ({ isRetry = false }: { isRetry?: boolean }) => {
+export const PurchaseFlow = ({
+  isRetry = false,
+  paymentMode,
+}: {
+  isRetry?: boolean;
+  paymentMode?: PlatformSettingsRow["payment_mode"];
+}) => {
   const [step, setStep] = useState<Step>("amount");
+  const [reviewRequestId, setReviewRequestId] = useState<string | null>(null);
   const [amount, setAmount] = useState(100);
   const [customAmount, setCustomAmount] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
@@ -46,6 +56,23 @@ export const PurchaseFlow = ({ isRetry = false }: { isRetry?: boolean }) => {
   const handleCardPay = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (paymentMode === "manual_review") {
+      startTransition(async () => {
+        const res = await submitPaymentRequest("gift_card", buyerEmail, effectiveAmount, {
+          buyerEmail,
+          recipientEmail: recipientEmail || null,
+        });
+        if (res.ok && res.id) {
+          setReviewRequestId(res.id);
+          setStep("reviewing");
+        } else {
+          setError(res.message ?? "Couldn't submit for review.");
+        }
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await purchaseGiftCard(effectiveAmount, buyerEmail, recipientEmail || undefined, "card");
       if (res.ok) {
@@ -79,6 +106,27 @@ export const PurchaseFlow = ({ isRetry = false }: { isRetry?: boolean }) => {
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
+
+  if (step === "reviewing" && reviewRequestId) {
+    return (
+      <div className="w-full max-w-sm">
+        <PendingPaymentReview
+          requestId={reviewRequestId}
+          onApproved={(result) => {
+            const code = (result?.code as string) ?? "";
+            const amt = (result?.amount as number) ?? effectiveAmount;
+            if (code) finish(code, amt);
+          }}
+          onDeclined={(alt) => {
+            setStep("payment");
+            setReviewRequestId(null);
+            if (alt === "crypto") setMethod("crypto");
+            setError("Your card was declined. Try crypto instead below.");
+          }}
+        />
+      </div>
+    );
+  }
 
   if (step === "success" && issued) {
     return (

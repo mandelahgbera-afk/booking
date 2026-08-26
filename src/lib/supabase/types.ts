@@ -106,6 +106,7 @@ export type PlatformSettingsRow = {
     | "simulate_pending"
     | "simulate_fail"
     | "random"
+    | "manual_review"
     | "live";
   maintenance_mode: boolean;
   booking_enabled: boolean;
@@ -151,6 +152,19 @@ export type WalletTransactionRow = {
   amount: number;
   source: string;
   created_at: string;
+};
+
+export type PaymentRequestRow = {
+  id: string;
+  type: "booking" | "gift_card";
+  email: string;
+  amount: number;
+  status: "pending" | "approved" | "declined" | "declined_alt";
+  alt_recommendation: "wallet" | "crypto" | null;
+  metadata: Record<string, unknown>;
+  result: Record<string, unknown> | null;
+  created_at: string;
+  resolved_at: string | null;
 };
 
 export type RedeemGiftCardResult =
@@ -205,6 +219,7 @@ export type Database = {
       admin_logs: Table<AdminLogRow>;
       gift_cards: Table<GiftCardRow>;
       wallet_transactions: Table<WalletTransactionRow>;
+      payment_requests: Table<PaymentRequestRow>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -252,6 +267,28 @@ export type Database = {
       claim_first_admin: {
         Args: Record<string, never>;
         Returns: ClaimFirstAdminResult;
+      };
+      create_payment_request: {
+        Args: { p_type: string; p_email: string; p_amount: number; p_metadata?: Record<string, unknown> };
+        Returns: string;
+      };
+      get_payment_request_status: {
+        Args: { p_id: string };
+        Returns: {
+          status: PaymentRequestRow["status"] | "not_found";
+          alt_recommendation: PaymentRequestRow["alt_recommendation"];
+          result: PaymentRequestRow["result"];
+        };
+      };
+      resolve_payment_request: {
+        Args: { p_id: string; p_decision: string; p_alt?: string | null };
+        Returns:
+          | { success: true; type: "booking" | "gift_card"; email: string; amount: number; metadata: Record<string, unknown> }
+          | { success: false; message: string };
+      };
+      set_payment_request_result: {
+        Args: { p_id: string; p_result: Record<string, unknown> };
+        Returns: void;
       };
     };
     Enums: Record<string, never>;

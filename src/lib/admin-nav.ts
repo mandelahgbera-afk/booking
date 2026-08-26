@@ -10,6 +10,7 @@ import {
   ScrollText,
   Gift,
   Mail,
+  ShieldAlert,
 } from "lucide-react";
 
 export type AdminNavItem = {
@@ -24,6 +25,7 @@ export const adminNav: AdminNavItem[] = [
   { href: "/admin/bookings", label: "Bookings", icon: Ticket },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
+  { href: "/admin/transactions", label: "Transaction Review", icon: ShieldAlert },
   { href: "/admin/gift-cards", label: "Gift Cards", icon: Gift },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/emails", label: "Email Templates", icon: Mail },

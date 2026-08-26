@@ -10,6 +10,8 @@ import { SeatMap } from "./SeatMap";
 import { PaymentStep, type PaymentOutcome } from "./PaymentStep";
 import { Confirmation } from "./Confirmation";
 import { confirmBooking, sendBookingFailedEmail } from "@/app/(site)/booking/[id]/actions";
+import { submitPaymentRequest } from "@/app/payment-requests/actions";
+import { PendingPaymentReview } from "@/components/PendingPaymentReview";
 
 const STEPS = ["Travelers", "Seats", "Payment", "Done"] as const;
 
@@ -28,6 +30,7 @@ export const BookingFlow = ({
   const [result, setResult] = useState<{ outcome: PaymentOutcome; reference: string } | null>(
     null
   );
+  const [reviewRequestId, setReviewRequestId] = useState<string | null>(null);
 
   const serviceFee = settings.service_fee_percent / 100;
   const total = useMemo(
@@ -76,12 +79,42 @@ export const BookingFlow = ({
         {step === 1 && (
           <SeatMap count={passengers.length} selected={seats} onChange={setSeats} />
         )}
-        {step === 2 && (
+        {step === 2 && reviewRequestId && (
+          <PendingPaymentReview
+            requestId={reviewRequestId}
+            onApproved={(result) => {
+              const reference = (result?.reference as string) ?? "CONFIRMED";
+              setResult({ outcome: "success", reference });
+              setStep(3);
+            }}
+            onDeclined={() => {
+              setResult({ outcome: "fail", reference: "—" });
+              setStep(3);
+            }}
+          />
+        )}
+        {step === 2 && !reviewRequestId && (
           <PaymentStep
             total={total}
             passengers={passengers}
             paymentMode={settings.payment_mode}
             isRetry={isRetry}
+            onManualReview={async (method) => {
+              const res = await submitPaymentRequest("booking", passengers[0].email, total, {
+                flightId: offer.id,
+                passengers,
+                seats,
+                cabin: offer.cabin,
+                method,
+                fromCode: offer.from.code,
+                toCode: offer.to.code,
+                departTime: offer.departTime,
+                arriveTime: offer.arriveTime,
+                airline: offer.airline.name,
+                flightNumber: offer.flightNumber,
+              });
+              if (res.ok && res.id) setReviewRequestId(res.id);
+            }}
             onResult={async (outcome, transactionId, method) => {
               if (outcome === "success") {
                 const { reference } = await confirmBooking({

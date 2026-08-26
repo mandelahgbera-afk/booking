@@ -253,7 +253,7 @@ create table if not exists public.reviews (
 create table if not exists public.platform_settings (
   id int primary key default 1 check (id = 1),   -- enforce singleton row
   payment_mode text not null default 'simulate_success'
-    check (payment_mode in ('simulate_success', 'simulate_pending', 'simulate_fail', 'random', 'live')),
+    check (payment_mode in ('simulate_success', 'simulate_pending', 'simulate_fail', 'random', 'manual_review', 'live')),
   maintenance_mode boolean not null default false,
   booking_enabled boolean not null default true,
   service_fee_percent numeric(5, 2) not null default 3.5,
@@ -266,9 +266,16 @@ create table if not exists public.platform_settings (
   updated_at timestamptz not null default now()
 );
 
--- Idempotent — picks up new columns on a project that already ran an
--- earlier version of this file, without needing a reset.
+-- Idempotent — picks up new columns/constraint changes on a project that
+-- already ran an earlier version of this file, without needing a reset.
 alter table public.platform_settings add column if not exists email_notifications_enabled boolean not null default true;
+do $$
+begin
+  alter table public.platform_settings drop constraint platform_settings_payment_mode_check;
+exception when undefined_object then null;
+end $$;
+alter table public.platform_settings add constraint platform_settings_payment_mode_check
+  check (payment_mode in ('simulate_success', 'simulate_pending', 'simulate_fail', 'random', 'manual_review', 'live'));
 
 insert into public.platform_settings (id) values (1)
   on conflict (id) do nothing;
@@ -503,6 +510,141 @@ create table if not exists public.admin_logs (
 );
 
 create index if not exists admin_logs_created_idx on public.admin_logs (created_at desc);
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- payment_requests  ("manual review" payment mode)
+-- Only used when platform_settings.payment_mode = 'manual_review'. Instead
+-- of an admin-picked blanket outcome auto-resolving every card payment,
+-- each one lands here as 'pending' and an admin decides it individually —
+-- approve, decline, or decline-with-alt-payment-recommendation (wallet for
+-- a booking, crypto for a gift card). The client polls
+-- get_payment_request_status() every couple seconds while pending, so the
+-- checkout screen updates the moment an admin acts, with no page reload —
+-- true Postgres Realtime broadcasting was considered but rejected: it needs
+-- an RLS SELECT policy permissive enough for an anonymous guest to read
+-- their own row, and RLS can't scope "only if you already know the UUID" —
+-- "using (true)" would let anyone list every pending transaction's email
+-- and amount. Short-interval polling through a narrow RPC avoids that
+-- entirely, at the cost of true instant push (a couple seconds instead of
+-- milliseconds) — a fine trade for this.
+-- ─────────────────────────────────────────────────────────────────────────
+create table if not exists public.payment_requests (
+  id uuid primary key default gen_random_uuid(),
+  type text not null check (type in ('booking', 'gift_card')),
+  email text not null,
+  amount numeric(10, 2) not null,
+  status text not null default 'pending'
+    check (status in ('pending', 'approved', 'declined', 'declined_alt')),
+  alt_recommendation text check (alt_recommendation in ('wallet', 'crypto')),
+  metadata jsonb not null default '{}'::jsonb,   -- offer/passengers/seats/etc, or gift card amount+recipient
+  result jsonb,                                  -- populated on approve: { reference } or { code }
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz
+);
+
+create index if not exists payment_requests_status_idx on public.payment_requests (status, created_at);
+
+alter table public.payment_requests enable row level security;
+
+-- Admin-only direct table access — everything else goes through the
+-- functions below, same shape as gift_cards/bookings above.
+drop policy if exists "payment_requests_admin_all" on public.payment_requests;
+create policy "payment_requests_admin_all" on public.payment_requests
+  for all using (public.is_admin()) with check (public.is_admin());
+
+create or replace function public.create_payment_request(
+  p_type text,
+  p_email text,
+  p_amount numeric,
+  p_metadata jsonb default '{}'::jsonb
+)
+returns uuid as $$
+declare
+  v_id uuid;
+begin
+  insert into public.payment_requests (type, email, amount, metadata)
+  values (p_type, lower(p_email), p_amount, p_metadata)
+  returning id into v_id;
+  return v_id;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function public.create_payment_request(text, text, numeric, jsonb) to anon, authenticated;
+
+-- Narrow, poll-safe status read — never returns another request's email or
+-- amount, only what the polling client needs to update its own UI.
+create or replace function public.get_payment_request_status(p_id uuid)
+returns jsonb as $$
+declare
+  v public.payment_requests;
+begin
+  select * into v from public.payment_requests where id = p_id;
+  if v.id is null then
+    return jsonb_build_object('status', 'not_found');
+  end if;
+  return jsonb_build_object(
+    'status', v.status,
+    'alt_recommendation', v.alt_recommendation,
+    'result', v.result
+  );
+end;
+$$ language plpgsql security definer set search_path = public stable;
+
+grant execute on function public.get_payment_request_status(uuid) to anon, authenticated;
+
+-- Admin decision. Only transitions status/alt_recommendation — the actual
+-- side effect (creating the booking, issuing the gift card) happens
+-- app-side via the existing create_booking / issue_gift_card functions
+-- using the metadata returned here, then set_payment_request_result below
+-- stores the outcome for the polling client to pick up.
+create or replace function public.resolve_payment_request(
+  p_id uuid,
+  p_decision text,
+  p_alt text default null
+)
+returns jsonb as $$
+declare
+  v_req public.payment_requests;
+begin
+  if not public.is_admin() then
+    return jsonb_build_object('success', false, 'message', 'Admin only.');
+  end if;
+  if p_decision not in ('approved', 'declined', 'declined_alt') then
+    return jsonb_build_object('success', false, 'message', 'Invalid decision.');
+  end if;
+
+  select * into v_req from public.payment_requests where id = p_id and status = 'pending';
+  if v_req.id is null then
+    return jsonb_build_object('success', false, 'message', 'Request not found or already resolved.');
+  end if;
+
+  update public.payment_requests
+  set status = p_decision, alt_recommendation = p_alt, resolved_at = now()
+  where id = p_id;
+
+  return jsonb_build_object(
+    'success', true,
+    'type', v_req.type,
+    'email', v_req.email,
+    'amount', v_req.amount,
+    'metadata', v_req.metadata
+  );
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function public.resolve_payment_request(uuid, text, text) to authenticated;
+
+create or replace function public.set_payment_request_result(p_id uuid, p_result jsonb)
+returns void as $$
+begin
+  if not public.is_admin() then
+    return;
+  end if;
+  update public.payment_requests set result = p_result where id = p_id;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function public.set_payment_request_result(uuid, jsonb) to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- updated_at trigger helper

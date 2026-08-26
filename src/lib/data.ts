@@ -211,6 +211,157 @@ export async function getAdminLogs(): Promise<AdminLog[]> {
   }, mockAdminLogs);
 }
 
+export type AdminDashboardStats = {
+  live: boolean; // false when Supabase isn't configured — everything below is a zero-state, never fabricated
+  activeFlights: number;
+  delayedFlights: number;
+  bookingsToday: number;
+  revenueToday: number;
+  giftCardsIssued: number;
+  revenueSeries: number[]; // hourly buckets, today only, real
+  flightStatusBreakdown: { label: string; count: number; color: string }[];
+  recentBookings: {
+    reference: string;
+    passenger: string;
+    route: string;
+    flightNumber: string;
+    amount: number;
+    status: string;
+  }[];
+};
+
+const STATUS_COLOR: Record<string, string> = {
+  scheduled: "#94a3b8",
+  boarding: "#3b82f6",
+  departed: "#0891b2",
+  in_air: "#10b981",
+  landed: "#0891b2",
+  delayed: "#f59e0b",
+  cancelled: "#ef4444",
+};
+
+const emptyDashboardStats: AdminDashboardStats = {
+  live: false,
+  activeFlights: 0,
+  delayedFlights: 0,
+  bookingsToday: 0,
+  revenueToday: 0,
+  giftCardsIssued: 0,
+  revenueSeries: Array(12).fill(0),
+  flightStatusBreakdown: [],
+  recentBookings: [],
+};
+
+export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
+  return safeSupabase(async (): Promise<AdminDashboardStats> => {
+    const supabase = await createClient();
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [flightsRes, bookingsTodayRes, paymentsTodayRes, giftCardsRes, recentRes] = await Promise.all([
+      supabase.from("flights").select("id, status"),
+      supabase.from("bookings").select("id", { count: "exact", head: true }).gte("created_at", todayStart.toISOString()),
+      supabase
+        .from("payments")
+        .select("amount, created_at")
+        .eq("status", "completed")
+        .gte("created_at", todayStart.toISOString()),
+      supabase.from("gift_cards").select("id", { count: "exact", head: true }),
+      supabase
+        .from("bookings")
+        .select("reference, status, total_amount, created_at, flight_id, passengers")
+        .order("created_at", { ascending: false })
+        .limit(6),
+    ]);
+
+    const flights = flightsRes.data ?? [];
+    const activeFlights = flights.filter((f) =>
+      ["scheduled", "boarding", "in_air"].includes(f.status)
+    ).length;
+    const delayedFlights = flights.filter((f) => f.status === "delayed").length;
+
+    const flightStatusBreakdown = Object.entries(
+      flights.reduce<Record<string, number>>((acc, f) => {
+        acc[f.status] = (acc[f.status] ?? 0) + 1;
+        return acc;
+      }, {})
+    ).map(([status, count]) => ({
+      label: status.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      count,
+      color: STATUS_COLOR[status] ?? "#94a3b8",
+    }));
+
+    const payments = paymentsTodayRes.data ?? [];
+    const revenueToday = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+
+    // Bucket today's completed payments by hour, 00:00–now, real values only.
+    const hoursSoFar = Math.max(new Date().getHours() + 1, 1);
+    const revenueSeries = Array(hoursSoFar).fill(0);
+    for (const p of payments) {
+      const hour = new Date(p.created_at).getHours();
+      if (hour < revenueSeries.length) revenueSeries[hour] += Number(p.amount);
+    }
+
+    const recentBookings = recentRes.data ?? [];
+    const flightIds = [...new Set(recentBookings.map((b) => b.flight_id))];
+    const { data: flightDetails } = flightIds.length
+      ? await supabase.from("flights").select("id, flight_number, from_code, to_code").in("id", flightIds)
+      : { data: [] as { id: string; flight_number: string; from_code: string; to_code: string }[] };
+
+    return {
+      live: true,
+      activeFlights,
+      delayedFlights,
+      bookingsToday: bookingsTodayRes.count ?? 0,
+      revenueToday,
+      giftCardsIssued: giftCardsRes.count ?? 0,
+      revenueSeries: revenueSeries.length > 1 ? revenueSeries : [0, 0],
+      flightStatusBreakdown,
+      recentBookings: recentBookings.map((b) => {
+        const flight = flightDetails?.find((f) => f.id === b.flight_id);
+        const passenger = Array.isArray(b.passengers) && b.passengers[0]?.name ? b.passengers[0].name : "Guest";
+        return {
+          reference: b.reference,
+          passenger,
+          route: flight ? `${flight.from_code} → ${flight.to_code}` : "—",
+          flightNumber: flight?.flight_number ?? "—",
+          amount: Number(b.total_amount),
+          status: b.status,
+        };
+      }),
+    };
+  }, emptyDashboardStats);
+}
+
+export async function getPendingPaymentRequests(): Promise<
+  {
+    id: string;
+    type: "booking" | "gift_card";
+    email: string;
+    amount: number;
+    metadata: Record<string, unknown>;
+    createdAt: string;
+  }[]
+> {
+  return safeSupabase(async () => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("payment_requests")
+      .select("id, type, email, amount, metadata, created_at")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true });
+    if (error || !data) throw error ?? new Error("empty");
+    return data.map((r) => ({
+      id: r.id,
+      type: r.type,
+      email: r.email,
+      amount: Number(r.amount),
+      metadata: r.metadata,
+      createdAt: r.created_at,
+    }));
+  }, []);
+}
+
 export async function getAdminGiftCards(): Promise<AdminGiftCard[]> {
   return safeSupabase(async () => {
     const supabase = await createClient();

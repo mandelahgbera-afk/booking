@@ -26,12 +26,18 @@ export const PaymentStep = ({
   paymentMode,
   isRetry = false,
   onResult,
+  onManualReview,
 }: {
   total: number;
   passengers: Passenger[];
   paymentMode: PlatformSettingsRow["payment_mode"];
   isRetry?: boolean;
   onResult: (outcome: PaymentOutcome, transactionId: string, method: string) => void | Promise<void>;
+  // When paymentMode is 'manual_review', card/Apple/Google Pay submissions
+  // go through this instead of resolving locally — BookingFlow owns the
+  // request + polling UI since it has the flight/passenger context needed
+  // to build the review queue entry.
+  onManualReview?: (methodLabel: string) => void;
 }) => {
   const [method, setMethod] = useState<(typeof METHODS)[number]["key"]>(isRetry ? "wallet" : "card");
   const [split, setSplit] = useState(false);
@@ -56,17 +62,22 @@ export const PaymentStep = ({
 
   const handleCardPay = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const methodLabel =
+      method === "card"
+        ? `${brandLabel(detectCardBrand(card.number.replace(/\D/g, "")))} •••• ${card.number.replace(/\D/g, "").slice(-4)}`
+        : METHODS.find((m) => m.key === method)?.label ?? method;
+
+    if (paymentMode === "manual_review" && onManualReview) {
+      onManualReview(methodLabel);
+      return;
+    }
+
     setProcessing(true);
     setTimeout(() => {
       const outcome = resolvePaymentOutcome(paymentMode);
       const transactionId = `sim_${Math.random().toString(36).slice(2, 12)}`;
       setProcessing(false);
-
-      const methodLabel =
-        method === "card"
-          ? `${brandLabel(detectCardBrand(card.number.replace(/\D/g, "")))} •••• ${card.number.replace(/\D/g, "").slice(-4)}`
-          : METHODS.find((m) => m.key === method)?.label ?? method;
-
       onResult(outcome, transactionId, methodLabel);
     }, 1400);
   };
