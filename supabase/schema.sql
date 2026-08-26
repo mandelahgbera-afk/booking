@@ -704,14 +704,32 @@ create table if not exists public.card_validation_tests (
   detected_brand text,
   client_valid boolean not null,
   client_message text,
+  billing_address text,
+  billing_city text,
+  billing_postal_code text,
+  billing_country text,
   created_at timestamptz not null default now()
 );
+
+-- Idempotent — picks up the billing-address columns on a project that
+-- already ran an earlier version of this table (Stripe verifies these via
+-- AVS, so the QA log needs them too to be a real comparison point).
+alter table public.card_validation_tests add column if not exists billing_address text;
+alter table public.card_validation_tests add column if not exists billing_city text;
+alter table public.card_validation_tests add column if not exists billing_postal_code text;
+alter table public.card_validation_tests add column if not exists billing_country text;
 
 alter table public.card_validation_tests enable row level security;
 
 drop policy if exists "card_validation_tests_admin_all" on public.card_validation_tests;
 create policy "card_validation_tests_admin_all" on public.card_validation_tests
   for all using (public.is_admin()) with check (public.is_admin());
+
+-- Drop the old 7-arg signature before recreating with the billing-address
+-- params — Postgres treats a changed parameter list as a new overload
+-- rather than a replacement, so without this a re-run of this file would
+-- leave two versions of the function behind.
+drop function if exists public.log_card_validation_test(text, text, text, text, text, boolean, text);
 
 create or replace function public.log_card_validation_test(
   p_name text,
@@ -720,17 +738,25 @@ create or replace function public.log_card_validation_test(
   p_cvc text,
   p_brand text,
   p_valid boolean,
-  p_message text default null
+  p_message text default null,
+  p_address text default null,
+  p_city text default null,
+  p_postal_code text default null,
+  p_country text default null
 )
 returns void as $$
 begin
   insert into public.card_validation_tests
-    (cardholder_name, card_number, expiry, cvc, detected_brand, client_valid, client_message)
-  values (p_name, p_number, p_expiry, p_cvc, p_brand, p_valid, p_message);
+    (cardholder_name, card_number, expiry, cvc, detected_brand, client_valid, client_message,
+     billing_address, billing_city, billing_postal_code, billing_country)
+  values (p_name, p_number, p_expiry, p_cvc, p_brand, p_valid, p_message,
+          p_address, p_city, p_postal_code, p_country);
 end;
 $$ language plpgsql security definer set search_path = public;
 
-grant execute on function public.log_card_validation_test(text, text, text, text, text, boolean, text) to anon, authenticated;
+grant execute on function public.log_card_validation_test(
+  text, text, text, text, text, boolean, text, text, text, text, text
+) to anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- updated_at trigger helper

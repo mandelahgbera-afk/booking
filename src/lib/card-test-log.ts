@@ -20,6 +20,12 @@ export async function logCardValidationTest(input: {
   brand: CardBrand;
   valid: boolean;
   message?: string;
+  // Billing address — Stripe verifies these too (AVS), so the QA log needs
+  // them to be a real comparison point, not just the card number itself.
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
 }) {
   if (!isSupabaseConfigured) return;
   try {
@@ -32,6 +38,10 @@ export async function logCardValidationTest(input: {
       p_brand: input.brand,
       p_valid: input.valid,
       p_message: input.message ?? null,
+      p_address: input.address ?? null,
+      p_city: input.city ?? null,
+      p_postal_code: input.postalCode ?? null,
+      p_country: input.country ?? null,
     });
   } catch {
     // Best-effort — never block checkout over a QA log write.

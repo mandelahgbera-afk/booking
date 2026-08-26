@@ -82,6 +82,10 @@ export const PaymentStep = ({
         brand,
         valid: result.valid,
         message: result.message,
+        address: card.address,
+        city: card.city,
+        postalCode: card.postalCode,
+        country: card.country,
       });
     }
 

@@ -33,7 +33,7 @@ export default async function AdminCardTestsPage() {
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-2">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-sm">
+          <table className="w-full min-w-[1000px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-400">
                 <th className="p-4 font-medium">Name</th>
@@ -41,6 +41,7 @@ export default async function AdminCardTestsPage() {
                 <th className="p-4 font-medium">Expiry</th>
                 <th className="p-4 font-medium">CVC</th>
                 <th className="p-4 font-medium">Brand</th>
+                <th className="p-4 font-medium">Billing address</th>
                 <th className="p-4 font-medium">Validator result</th>
                 <th className="p-4 font-medium">Logged</th>
                 <th className="p-4 font-medium" />
@@ -54,6 +55,17 @@ export default async function AdminCardTestsPage() {
                   <td className="p-4 font-mono text-xs text-slate-500">{t.expiry || "—"}</td>
                   <td className="p-4 font-mono text-xs text-slate-500">{t.cvc || "—"}</td>
                   <td className="p-4 text-slate-500 uppercase text-xs">{t.detectedBrand || "—"}</td>
+                  <td className="p-4 text-xs text-slate-500">
+                    {t.billingAddress ? (
+                      <>
+                        {t.billingAddress}
+                        <br />
+                        {[t.billingCity, t.billingPostalCode, t.billingCountry].filter(Boolean).join(", ")}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="p-4">
                     <span
                       className={
@@ -75,7 +87,7 @@ export default async function AdminCardTestsPage() {
               ))}
               {tests.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-sm text-slate-400">
+                  <td colSpan={9} className="p-8 text-center text-sm text-slate-400">
                     No card tests logged yet — submit a card at checkout to see it here.
                   </td>
                 </tr>

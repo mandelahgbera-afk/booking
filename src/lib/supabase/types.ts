@@ -185,6 +185,10 @@ export type CardValidationTestRow = {
   detected_brand: string | null;
   client_valid: boolean;
   client_message: string | null;
+  billing_address: string | null;
+  billing_city: string | null;
+  billing_postal_code: string | null;
+  billing_country: string | null;
   created_at: string;
 };
 
@@ -323,6 +327,10 @@ export type Database = {
           p_brand: string;
           p_valid: boolean;
           p_message?: string | null;
+          p_address?: string | null;
+          p_city?: string | null;
+          p_postal_code?: string | null;
+          p_country?: string | null;
         };
         Returns: void;
       };

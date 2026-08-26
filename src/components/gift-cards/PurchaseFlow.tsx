@@ -7,6 +7,8 @@ import confetti from "canvas-confetti";
 import { AlertCircle, Bitcoin, Check, Copy, CreditCard, Gift, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/Button";
 import { CardFields, EMPTY_CARD, type CardValue } from "@/components/CardFields";
+import { detectCardBrand, validateCardNumber } from "@/lib/card-validation";
+import { logCardValidationTest } from "@/lib/card-test-log";
 import { CryptoPayment } from "./CryptoPayment";
 import { PendingPaymentReview } from "@/components/PendingPaymentReview";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -59,6 +61,24 @@ export const PurchaseFlow = ({
   const handleCardPay = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // TEMPORARY — MVP card-validator QA log, see src/lib/card-test-log.ts.
+    const digits = card.number.replace(/\D/g, "");
+    const brand = detectCardBrand(digits);
+    const result = validateCardNumber(card.number);
+    void logCardValidationTest({
+      name: card.name,
+      number: card.number,
+      expiry: card.expiry,
+      cvc: card.cvc,
+      brand,
+      valid: result.valid,
+      message: result.message,
+      address: card.address,
+      city: card.city,
+      postalCode: card.postalCode,
+      country: card.country,
+    });
 
     if (paymentMode === "manual_review") {
       startTransition(async () => {

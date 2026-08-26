@@ -464,6 +464,10 @@ export type AdminCardTest = {
   detectedBrand: string | null;
   clientValid: boolean;
   clientMessage: string | null;
+  billingAddress: string | null;
+  billingCity: string | null;
+  billingPostalCode: string | null;
+  billingCountry: string | null;
   createdAt: string;
 };
 
@@ -486,6 +490,10 @@ export async function getAdminCardTests(): Promise<AdminCardTest[]> {
       detectedBrand: c.detected_brand,
       clientValid: c.client_valid,
       clientMessage: c.client_message,
+      billingAddress: c.billing_address,
+      billingCity: c.billing_city,
+      billingPostalCode: c.billing_postal_code,
+      billingCountry: c.billing_country,
       createdAt: c.created_at,
     }));
   } catch {
