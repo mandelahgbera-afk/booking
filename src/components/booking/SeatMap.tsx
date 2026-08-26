@@ -57,8 +57,10 @@ export const SeatMap = ({
         {Array.from({ length: ROWS }).map((_, r) => {
           const row = r + 1;
           return (
-            <div key={row} className="flex items-center justify-center gap-1.5">
-              <span className="w-4 text-[10px] text-slate-300">{row}</span>
+            <div key={row} className="flex items-center justify-center gap-2">
+              <span className="flex h-7 w-6 shrink-0 items-center justify-center rounded-md bg-slate-50 text-xs font-bold text-slate-500">
+                {row}
+              </span>
               {COLS.map((col, i) => {
                 const seat = `${row}${col}`;
                 const taken = isTaken(row, col);

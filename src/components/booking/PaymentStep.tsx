@@ -107,21 +107,21 @@ export const PaymentStep = ({
         </div>
       )}
 
-      <div className="mb-5 flex gap-2">
+      <div className="mb-5 grid grid-cols-2 gap-2 sm:flex">
         {METHODS.map((m) => (
           <button
             key={m.key}
             type="button"
             onClick={() => setMethod(m.key)}
             className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
+              "flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-xs font-medium transition-colors sm:flex-1 sm:gap-2 sm:px-3 sm:text-sm",
               method === m.key
                 ? "border-orange-500 bg-orange-50 text-orange-600"
                 : "border-slate-200 text-slate-500 hover:border-slate-300"
             )}
           >
-            <m.icon size={16} />
-            {m.label}
+            <m.icon size={16} className="shrink-0" />
+            <span className="truncate">{m.label}</span>
           </button>
         ))}
       </div>
