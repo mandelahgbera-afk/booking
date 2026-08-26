@@ -15,6 +15,7 @@ import {
   type FlightOffer,
   type Testimonial,
   type Airport,
+  type Airline,
   airlines as mockAirlines,
 } from "@/lib/mock-data";
 import type { PlatformSettingsRow, AdminLogRow } from "@/lib/supabase/types";
@@ -62,6 +63,72 @@ export async function getAirports(): Promise<Airport[]> {
   }, mockAirports);
 }
 
+export async function getAirlines(): Promise<Airline[]> {
+  return safeSupabase(async () => {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase.from("airlines").select("*");
+    if (error || !data || data.length === 0) throw error ?? new Error("empty");
+    return data as Airline[];
+  }, mockAirlines);
+}
+
+export type AdminFlightRoute = {
+  id: string;
+  flightNumber: string;
+  mode: "flight" | "train" | "bus";
+  airline: { code: string; name: string };
+  from: { code: string; city: string };
+  to: { code: string; city: string };
+  departAt: string;
+  arriveAt: string;
+  cabin: string;
+  price: number;
+  seatsTotal: number;
+  seatsLeft: number;
+  stops: number;
+  status: string;
+};
+
+// Admin route management — unlike getFlightOffers (public search, one mode
+// at a time, mock-fallback), this is the raw admin-only list behind
+// /admin/flights: every mode, every status, real data only.
+export async function getAdminFlights(): Promise<AdminFlightRoute[]> {
+  if (!isSupabaseConfigured) return [];
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("flights")
+      .select(
+        "id, flight_number, mode, price, seats_total, seats_left, stops, status, cabin, depart_at, arrive_at, airline:airlines(code, name), from:airports!flights_from_code_fkey(code, city), to:airports!flights_to_code_fkey(code, city)"
+      )
+      .order("depart_at", { ascending: true });
+    if (error || !data) return [];
+    return data.map((f: Record<string, unknown>) => {
+      const airline = f.airline as { code: string; name: string };
+      const from = f.from as { code: string; city: string };
+      const to = f.to as { code: string; city: string };
+      return {
+        id: f.id as string,
+        flightNumber: f.flight_number as string,
+        mode: f.mode as AdminFlightRoute["mode"],
+        airline,
+        from,
+        to,
+        departAt: f.depart_at as string,
+        arriveAt: f.arrive_at as string,
+        cabin: f.cabin as string,
+        price: Number(f.price),
+        seatsTotal: f.seats_total as number,
+        seatsLeft: f.seats_left as number,
+        stops: f.stops as number,
+        status: f.status as string,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 export async function getFlightOffers(params?: {
   from?: string;
   to?: string;
@@ -81,6 +148,7 @@ export async function getFlightOffers(params?: {
       .from("flights")
       .select("*, airline:airlines(*), from:airports!flights_from_code_fkey(*), to:airports!flights_to_code_fkey(*)")
       .eq("mode", mode)
+      .neq("status", "cancelled")
       .order("depart_at", { ascending: true });
     if (params?.from) query = query.eq("from_code", params.from);
     if (params?.to) query = query.eq("to_code", params.to);
@@ -125,6 +193,7 @@ export async function getFlightOffer(id: string): Promise<FlightOffer | null> {
       .from("flights")
       .select("*, airline:airlines(*), from:airports!flights_from_code_fkey(*), to:airports!flights_to_code_fkey(*)")
       .eq("id", id)
+      .neq("status", "cancelled")
       .single();
     if (error || !data) throw error ?? new Error("empty");
 
