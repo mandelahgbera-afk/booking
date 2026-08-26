@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CreditCard, Loader2, Lock, Smartphone, SplitSquareHorizontal, Wallet, RefreshCw } from "lucide-react";
 import { Button } from "@/components/Button";
-import { CardFields, type CardValue } from "@/components/CardFields";
+import { CardFields, EMPTY_CARD, type CardValue } from "@/components/CardFields";
 import { detectCardBrand, brandLabel, validateCardNumber } from "@/lib/card-validation";
 import { resolvePaymentOutcome, type PaymentOutcome } from "@/lib/payment-simulation";
 import { getWalletBalance, spendWalletCredit } from "@/app/gift-cards/actions";
@@ -43,7 +43,7 @@ export const PaymentStep = ({
   const [method, setMethod] = useState<(typeof METHODS)[number]["key"]>(isRetry ? "wallet" : "card");
   const [split, setSplit] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [card, setCard] = useState<CardValue>({ name: "", number: "", expiry: "", cvc: "" });
+  const [card, setCard] = useState<CardValue>(EMPTY_CARD);
   const [cardValid, setCardValid] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
 

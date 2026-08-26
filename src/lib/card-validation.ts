@@ -114,6 +114,28 @@ export function validateCardholderName(name: string): FieldValidation {
   return { valid: true };
 }
 
+export function validateAddressLine(value: string): FieldValidation {
+  if (value.trim().length < 4) return { valid: false, message: "Street address is required" };
+  return { valid: true };
+}
+
+export function validateCity(value: string): FieldValidation {
+  if (value.trim().length < 2) return { valid: false, message: "City is required" };
+  return { valid: true };
+}
+
+export function validatePostalCode(value: string): FieldValidation {
+  const trimmed = value.trim();
+  if (trimmed.length < 3) return { valid: false, message: "Postal code is required" };
+  if (!/^[a-zA-Z0-9\s-]{3,10}$/.test(trimmed)) return { valid: false, message: "That doesn't look right" };
+  return { valid: true };
+}
+
+export function validateCountry(value: string): FieldValidation {
+  if (value.trim().length < 2) return { valid: false, message: "Country is required" };
+  return { valid: true };
+}
+
 export function brandLabel(brand: CardBrand): string {
   switch (brand) {
     case "visa":

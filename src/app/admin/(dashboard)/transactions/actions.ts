@@ -47,6 +47,7 @@ export async function resolvePaymentRequestAction(
   if (!data.success) return { ok: false, message: data.message };
 
   const { type, email, amount, metadata } = data;
+  let emailWarning: string | undefined;
 
   if (decision === "approved") {
     const publicClient = createPublicClient();
@@ -64,27 +65,34 @@ export async function resolvePaymentRequestAction(
         p_transaction_id: `sim_${id.slice(0, 10)}`,
       });
 
-      if (!bErr && bookingResult?.success) {
-        await supabase.rpc("set_payment_request_result", {
-          p_id: id,
-          p_result: { reference: bookingResult.reference },
-        });
-
-        const copy = bookingConfirmationEmail({
-          passengerName: m.passengers[0]?.name || "Traveler",
-          reference: bookingResult.reference,
-          airline: m.airline,
-          flightNumber: m.flightNumber,
-          from: m.fromCode,
-          to: m.toCode,
-          departTime: m.departTime,
-          arriveTime: m.arriveTime,
-          cabin: m.cabin,
-          seats: m.seats,
-          total: amount,
-        });
-        await sendEmail({ to: email, ...copy });
+      if (bErr || !bookingResult?.success) {
+        const rpcMessage = bookingResult && !bookingResult.success ? bookingResult.message : undefined;
+        return {
+          ok: false,
+          message: bErr?.message || rpcMessage || "Approved, but creating the booking failed.",
+        };
       }
+
+      await supabase.rpc("set_payment_request_result", {
+        p_id: id,
+        p_result: { reference: bookingResult.reference },
+      });
+
+      const copy = bookingConfirmationEmail({
+        passengerName: m.passengers[0]?.name || "Traveler",
+        reference: bookingResult.reference,
+        airline: m.airline,
+        flightNumber: m.flightNumber,
+        from: m.fromCode,
+        to: m.toCode,
+        departTime: m.departTime,
+        arriveTime: m.arriveTime,
+        cabin: m.cabin,
+        seats: m.seats,
+        total: amount,
+      });
+      const emailResult = await sendEmail({ to: email, ...copy });
+      if (!emailResult.ok) emailWarning = `Booking confirmed, but the email didn't send: ${emailResult.error ?? "unknown error"}`;
     } else {
       const m = metadata as unknown as GiftCardRequestMetadata;
       const { data: card, error: gErr } = await publicClient.rpc("issue_gift_card", {
@@ -93,15 +101,18 @@ export async function resolvePaymentRequestAction(
         p_buyer_email: m.buyerEmail ?? email,
       });
 
-      if (!gErr && card) {
-        await supabase.rpc("set_payment_request_result", {
-          p_id: id,
-          p_result: { code: card.code, amount: Number(card.amount) },
-        });
-
-        const copy = giftCardPurchasedEmail({ code: card.code, amount: Number(card.amount) });
-        await sendEmail({ to: email, ...copy });
+      if (gErr || !card) {
+        return { ok: false, message: gErr?.message || "Approved, but issuing the gift card failed." };
       }
+
+      await supabase.rpc("set_payment_request_result", {
+        p_id: id,
+        p_result: { code: card.code, amount: Number(card.amount) },
+      });
+
+      const copy = giftCardPurchasedEmail({ code: card.code, amount: Number(card.amount) });
+      const emailResult = await sendEmail({ to: email, ...copy });
+      if (!emailResult.ok) emailWarning = `Gift card issued, but the email didn't send: ${emailResult.error ?? "unknown error"}`;
     }
   } else {
     // declined or declined_alt — same retry-email pattern as the automatic
@@ -117,9 +128,10 @@ export async function resolvePaymentRequestAction(
       amount,
       retryUrl,
     });
-    await sendEmail({ to: email, ...copy });
+    const emailResult = await sendEmail({ to: email, ...copy });
+    if (!emailResult.ok) emailWarning = `Declined, but the email didn't send: ${emailResult.error ?? "unknown error"}`;
   }
 
   await logAdminAction("payment_requests.resolve", { id, decision, type, alt: alt ?? null });
-  return { ok: true };
+  return { ok: true, message: emailWarning };
 }

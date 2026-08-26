@@ -593,6 +593,35 @@ export const flightOffers: FlightOffer[] = [
     seatsLeft: 45,
     mode: "bus",
   },
+
+  // Return legs + extra hub connections for the routes above — a real
+  // network runs both ways, and covers more than one corridor per city.
+  { id: "TR105", airline: operator("ES"), flightNumber: "TR 105", from: airport("MUC"), to: airport("BER"), departTime: "15:10", arriveTime: "19:10", durationMins: 240, stops: 0, price: 89, cabin: "Economy", seatsLeft: 38, mode: "train" },
+  { id: "TR229", airline: operator("ES"), flightNumber: "TR 229", from: airport("AMS"), to: airport("BER"), departTime: "11:00", arriveTime: "17:25", durationMins: 385, stops: 0, price: 112, cabin: "Economy", seatsLeft: 25, mode: "train" },
+  { id: "TR352", airline: operator("CX"), flightNumber: "TR 352", from: airport("LDN"), to: airport("PAR"), departTime: "08:30", arriveTime: "10:45", durationMins: 135, stops: 0, price: 145, cabin: "Business", seatsLeft: 60, mode: "train" },
+  { id: "TR468", airline: operator("CX"), flightNumber: "TR 468", from: airport("BRU"), to: airport("FRA"), departTime: "07:15", arriveTime: "10:25", durationMins: 190, stops: 0, price: 98, cabin: "Economy", seatsLeft: 31, mode: "train" },
+  { id: "TR583", airline: operator("ES"), flightNumber: "TR 583", from: airport("VIE"), to: airport("MUC"), departTime: "06:40", arriveTime: "10:50", durationMins: 250, stops: 0, price: 76, cabin: "Economy", seatsLeft: 29, mode: "train" },
+  { id: "TR601", airline: operator("ES"), flightNumber: "TR 601", from: airport("BER"), to: airport("HAM"), departTime: "10:15", arriveTime: "12:00", durationMins: 105, stops: 0, price: 45, cabin: "Economy", seatsLeft: 50, mode: "train" },
+  { id: "TR602", airline: operator("ES"), flightNumber: "TR 602", from: airport("HAM"), to: airport("BER"), departTime: "17:30", arriveTime: "19:15", durationMins: 105, stops: 0, price: 45, cabin: "Economy", seatsLeft: 48, mode: "train" },
+  { id: "TR615", airline: operator("CX"), flightNumber: "TR 615", from: airport("FRA"), to: airport("MUC"), departTime: "09:00", arriveTime: "12:20", durationMins: 200, stops: 0, price: 68, cabin: "Economy", seatsLeft: 40, mode: "train" },
+  { id: "TR616", airline: operator("CX"), flightNumber: "TR 616", from: airport("MUC"), to: airport("FRA"), departTime: "14:45", arriveTime: "18:05", durationMins: 200, stops: 0, price: 68, cabin: "Economy", seatsLeft: 37, mode: "train" },
+  { id: "TR630", airline: operator("CX"), flightNumber: "TR 630", from: airport("BRU"), to: airport("AMS"), departTime: "12:10", arriveTime: "14:00", durationMins: 110, stops: 0, price: 39, cabin: "Economy", seatsLeft: 44, mode: "train" },
+  { id: "TR631", airline: operator("CX"), flightNumber: "TR 631", from: airport("AMS"), to: airport("BRU"), departTime: "08:20", arriveTime: "10:10", durationMins: 110, stops: 0, price: 39, cabin: "Economy", seatsLeft: 41, mode: "train" },
+  { id: "TR701", airline: operator("ES"), flightNumber: "TR 701", from: airport("LDN"), to: airport("MAN"), departTime: "07:05", arriveTime: "09:15", durationMins: 130, stops: 0, price: 58, cabin: "Economy", seatsLeft: 33, mode: "train" },
+  { id: "TR702", airline: operator("ES"), flightNumber: "TR 702", from: airport("MAN"), to: airport("LDN"), departTime: "18:20", arriveTime: "20:30", durationMins: 130, stops: 0, price: 58, cabin: "Economy", seatsLeft: 30, mode: "train" },
+
+  { id: "BU211", airline: operator("LW"), flightNumber: "BU 211", from: airport("LDN"), to: airport("MAN"), departTime: "13:20", arriveTime: "18:05", durationMins: 285, stops: 0, price: 32, cabin: "Economy", seatsLeft: 15, mode: "bus" },
+  { id: "BU345", airline: operator("LW"), flightNumber: "BU 345", from: airport("MAN"), to: airport("EDI"), departTime: "08:00", arriveTime: "13:20", durationMins: 320, stops: 0, price: 38, cabin: "Economy", seatsLeft: 18, mode: "bus" },
+  { id: "BU460", airline: operator("CL"), flightNumber: "BU 460", from: airport("BER"), to: airport("HAM"), departTime: "09:10", arriveTime: "11:55", durationMins: 165, stops: 0, price: 24, cabin: "Economy", seatsLeft: 36, mode: "bus" },
+  { id: "BU574", airline: operator("CL"), flightNumber: "BU 574", from: airport("FRA"), to: airport("CGN"), departTime: "07:40", arriveTime: "10:05", durationMins: 145, stops: 0, price: 21, cabin: "Economy", seatsLeft: 42, mode: "bus" },
+  { id: "BU620", airline: operator("LW"), flightNumber: "BU 620", from: airport("LDN"), to: airport("BRU"), departTime: "06:50", arriveTime: "10:50", durationMins: 240, stops: 0, price: 29, cabin: "Economy", seatsLeft: 25, mode: "bus" },
+  { id: "BU621", airline: operator("LW"), flightNumber: "BU 621", from: airport("BRU"), to: airport("LDN"), departTime: "16:15", arriveTime: "20:15", durationMins: 240, stops: 0, price: 29, cabin: "Economy", seatsLeft: 22, mode: "bus" },
+  { id: "BU640", airline: operator("CL"), flightNumber: "BU 640", from: airport("BRU"), to: airport("AMS"), departTime: "11:05", arriveTime: "13:15", durationMins: 130, stops: 0, price: 18, cabin: "Economy", seatsLeft: 48, mode: "bus" },
+  { id: "BU641", airline: operator("CL"), flightNumber: "BU 641", from: airport("AMS"), to: airport("BRU"), departTime: "15:40", arriveTime: "17:50", durationMins: 130, stops: 0, price: 18, cabin: "Economy", seatsLeft: 46, mode: "bus" },
+  { id: "BU660", airline: operator("CL"), flightNumber: "BU 660", from: airport("BRU"), to: airport("CGN"), departTime: "09:50", arriveTime: "12:20", durationMins: 150, stops: 0, price: 22, cabin: "Economy", seatsLeft: 39, mode: "bus" },
+  { id: "BU661", airline: operator("CL"), flightNumber: "BU 661", from: airport("CGN"), to: airport("BRU"), departTime: "13:35", arriveTime: "16:05", durationMins: 150, stops: 0, price: 22, cabin: "Economy", seatsLeft: 35, mode: "bus" },
+  { id: "BU700", airline: operator("LW"), flightNumber: "BU 700", from: airport("MAN"), to: airport("BER"), departTime: "05:30", arriveTime: "16:30", durationMins: 660, stops: 1, price: 55, cabin: "Economy", seatsLeft: 20, mode: "bus" },
+  { id: "BU701", airline: operator("LW"), flightNumber: "BU 701", from: airport("BER"), to: airport("MAN"), departTime: "07:00", arriveTime: "18:00", durationMins: 660, stops: 1, price: 55, cabin: "Economy", seatsLeft: 18, mode: "bus" },
 ];
 
 export type Testimonial = {

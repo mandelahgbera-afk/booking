@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Check, Gift, Loader2, PlaneTakeoff, X, Wallet, Bitcoin, RefreshCw } from "lucide-react";
+import { AlertTriangle, Check, Gift, Loader2, PlaneTakeoff, X, Wallet, Bitcoin, RefreshCw } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { fetchPendingRequests, resolvePaymentRequestAction } from "@/app/admin/(dashboard)/transactions/actions";
 
@@ -17,6 +17,8 @@ type PendingRequest = {
 export const TransactionQueue = ({ initialRequests }: { initialRequests: PendingRequest[] }) => {
   const [requests, setRequests] = useState(initialRequests);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -26,11 +28,22 @@ export const TransactionQueue = ({ initialRequests }: { initialRequests: Pending
     return () => clearInterval(interval);
   }, []);
 
+  // Only drop the request from the list — and thus only treat the decision
+  // as handled — once the server confirms it actually went through. Before
+  // this, a failed RPC call (e.g. an admin session RLS rejects) still made
+  // the row disappear, silently: no booking/gift-card side effect, no
+  // email, and nothing telling the admin it didn't work.
   const resolve = (id: string, decision: "approved" | "declined" | "declined_alt", alt?: "wallet" | "crypto") => {
     setBusyId(id);
+    setErrors((prev) => ({ ...prev, [id]: "" }));
     startTransition(async () => {
-      await resolvePaymentRequestAction(id, decision, alt);
-      setRequests((prev) => prev.filter((r) => r.id !== id));
+      const res = await resolvePaymentRequestAction(id, decision, alt);
+      if (res.ok) {
+        setRequests((prev) => prev.filter((r) => r.id !== id));
+        if (res.message) setNotice(res.message);
+      } else {
+        setErrors((prev) => ({ ...prev, [id]: res.message || "That didn't go through — try again." }));
+      }
       setBusyId(null);
     });
   };
@@ -46,6 +59,17 @@ export const TransactionQueue = ({ initialRequests }: { initialRequests: Pending
 
   return (
     <div className="flex flex-col gap-3">
+      {notice && (
+        <div className="flex items-start justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-800">
+          <span className="flex items-start gap-2">
+            <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+            {notice}
+          </span>
+          <button onClick={() => setNotice(null)} className="shrink-0 font-semibold hover:underline">
+            Dismiss
+          </button>
+        </div>
+      )}
       {requests.map((r) => (
         <div key={r.id} className="rounded-2xl border border-slate-200 bg-white p-5">
           <div className="flex items-start justify-between gap-4">
@@ -95,6 +119,13 @@ export const TransactionQueue = ({ initialRequests }: { initialRequests: Pending
               Decline + recommend {r.type === "booking" ? "wallet" : "crypto"}
             </button>
           </div>
+
+          {errors[r.id] && (
+            <div className="mt-3 flex items-start gap-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600">
+              <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+              {errors[r.id]}
+            </div>
+          )}
         </div>
       ))}
     </div>

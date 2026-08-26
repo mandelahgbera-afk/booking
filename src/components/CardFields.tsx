@@ -11,11 +11,55 @@ import {
   validateCardholderName,
   validateCVC,
   validateExpiry,
+  validateAddressLine,
+  validateCity,
+  validatePostalCode,
+  validateCountry,
   brandLabel,
   type FieldValidation,
 } from "@/lib/card-validation";
 
-export type CardValue = { name: string; number: string; expiry: string; cvc: string };
+export type CardValue = {
+  name: string;
+  number: string;
+  expiry: string;
+  cvc: string;
+  // Billing address — standard on any real card form, required here too.
+  address: string;
+  city: string;
+  postalCode: string;
+  country: string;
+};
+
+export const EMPTY_CARD: CardValue = {
+  name: "",
+  number: "",
+  expiry: "",
+  cvc: "",
+  address: "",
+  city: "",
+  postalCode: "",
+  country: "",
+};
+
+const COUNTRIES = [
+  "United States",
+  "United Kingdom",
+  "Canada",
+  "Germany",
+  "France",
+  "Netherlands",
+  "Belgium",
+  "Austria",
+  "Ireland",
+  "Spain",
+  "Italy",
+  "Australia",
+  "Japan",
+  "Singapore",
+  "United Arab Emirates",
+  "Other",
+];
 
 const EMPTY_VALID: FieldValidation = { valid: true };
 
@@ -33,6 +77,10 @@ export const CardFields = ({
     number: false,
     expiry: false,
     cvc: false,
+    address: false,
+    city: false,
+    postalCode: false,
+    country: false,
   });
 
   const digits = value.number.replace(/\D/g, "");
@@ -42,12 +90,20 @@ export const CardFields = ({
   const numberV = touched.number ? validateCardNumber(value.number) : EMPTY_VALID;
   const expiryV = touched.expiry ? validateExpiry(value.expiry) : EMPTY_VALID;
   const cvcV = touched.cvc ? validateCVC(value.cvc, brand) : EMPTY_VALID;
+  const addressV = touched.address ? validateAddressLine(value.address) : EMPTY_VALID;
+  const cityV = touched.city ? validateCity(value.city) : EMPTY_VALID;
+  const postalV = touched.postalCode ? validatePostalCode(value.postalCode) : EMPTY_VALID;
+  const countryV = touched.country ? validateCountry(value.country) : EMPTY_VALID;
 
   const allValid =
     validateCardholderName(value.name).valid &&
     validateCardNumber(value.number).valid &&
     validateExpiry(value.expiry).valid &&
-    validateCVC(value.cvc, brand).valid;
+    validateCVC(value.cvc, brand).valid &&
+    validateAddressLine(value.address).valid &&
+    validateCity(value.city).valid &&
+    validatePostalCode(value.postalCode).valid &&
+    validateCountry(value.country).valid;
 
   useEffect(() => {
     onValidChange(allValid);
@@ -130,6 +186,84 @@ export const CardFields = ({
             )}
           />
           {!cvcV.valid && <p className="mt-1 text-xs text-red-500">{cvcV.message}</p>}
+        </div>
+      </div>
+
+      <div className="mt-1 border-t border-slate-100 pt-3">
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          Billing address
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div>
+            <input
+              required
+              value={value.address}
+              onChange={(e) => onChange({ ...value, address: e.target.value })}
+              onBlur={() => markTouched("address")}
+              placeholder="Street address"
+              className={cn(
+                "w-full rounded-xl border px-3 py-2.5 text-sm outline-none",
+                !addressV.valid ? "border-red-300 focus:border-red-400" : "border-slate-200 focus:border-orange-400"
+              )}
+            />
+            {!addressV.valid && <p className="mt-1 text-xs text-red-500">{addressV.message}</p>}
+          </div>
+
+          <div className="flex gap-3">
+            <div className="w-1/2">
+              <input
+                required
+                value={value.city}
+                onChange={(e) => onChange({ ...value, city: e.target.value })}
+                onBlur={() => markTouched("city")}
+                placeholder="City"
+                className={cn(
+                  "w-full rounded-xl border px-3 py-2.5 text-sm outline-none",
+                  !cityV.valid ? "border-red-300 focus:border-red-400" : "border-slate-200 focus:border-orange-400"
+                )}
+              />
+              {!cityV.valid && <p className="mt-1 text-xs text-red-500">{cityV.message}</p>}
+            </div>
+            <div className="w-1/2">
+              <input
+                required
+                value={value.postalCode}
+                onChange={(e) => onChange({ ...value, postalCode: e.target.value })}
+                onBlur={() => markTouched("postalCode")}
+                placeholder="Postal code"
+                className={cn(
+                  "w-full rounded-xl border px-3 py-2.5 text-sm outline-none",
+                  !postalV.valid ? "border-red-300 focus:border-red-400" : "border-slate-200 focus:border-orange-400"
+                )}
+              />
+              {!postalV.valid && <p className="mt-1 text-xs text-red-500">{postalV.message}</p>}
+            </div>
+          </div>
+
+          <div>
+            <select
+              required
+              value={value.country}
+              onChange={(e) => onChange({ ...value, country: e.target.value })}
+              onBlur={() => markTouched("country")}
+              className={cn(
+                "w-full rounded-xl border bg-white px-3 py-2.5 text-sm outline-none",
+                !countryV.valid ? "border-red-300 focus:border-red-400" : "border-slate-200 focus:border-orange-400",
+                !value.country && "text-slate-400"
+              )}
+            >
+              <option value="" disabled>
+                Country
+              </option>
+              {COUNTRIES.map((c) => (
+                <option key={c} value={c} className="text-slate-900">
+                  {c}
+                </option>
+              ))}
+            </select>
+            {!countryV.valid && <p className="mt-1 text-xs text-red-500">{countryV.message}</p>}
+          </div>
         </div>
       </div>
     </div>

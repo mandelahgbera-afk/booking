@@ -6,7 +6,7 @@ import QRCode from "qrcode";
 import confetti from "canvas-confetti";
 import { AlertCircle, Bitcoin, Check, Copy, CreditCard, Gift, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/Button";
-import { CardFields, type CardValue } from "@/components/CardFields";
+import { CardFields, EMPTY_CARD, type CardValue } from "@/components/CardFields";
 import { CryptoPayment } from "./CryptoPayment";
 import { PendingPaymentReview } from "@/components/PendingPaymentReview";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -39,7 +39,7 @@ export const PurchaseFlow = ({
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<{ code: string; amount: number } | null>(null);
   const [copied, setCopied] = useState(false);
-  const [card, setCard] = useState<CardValue>({ name: "", number: "", expiry: "", cvc: "" });
+  const [card, setCard] = useState<CardValue>(EMPTY_CARD);
   const [cardValid, setCardValid] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
