@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, PlaneTakeoff, Hotel, MapPin, Star, Gift, User, Info, Mail, LogOut, Globe2 } from "lucide-react";
+import { X, PlaneTakeoff, Hotel, TrainFront, Bus, MapPin, Star, Gift, User, Info, Mail, LogOut, Globe2 } from "lucide-react";
 import { Button } from "@/components/Button";
 import type { SiteUser } from "./AppChrome";
 
 const LINKS = [
   { href: "/flights", label: "Flights", icon: PlaneTakeoff },
+  { href: "/trains", label: "Trains", icon: TrainFront },
+  { href: "/buses", label: "Buses", icon: Bus },
   { href: "/hotels", label: "Hotels", icon: Hotel },
   { href: "/destinations", label: "Destinations", icon: MapPin },
   { href: "/gift-cards", label: "Gift cards & wallet", icon: Gift },
@@ -59,6 +61,17 @@ export const MobileMenu = ({
                 <X size={16} />
               </button>
             </div>
+
+            {user && (
+              <Link
+                href="/dashboard"
+                onClick={onClose}
+                className="mb-2 flex items-center justify-between rounded-2xl gradient-primary px-4 py-3 text-sm font-semibold text-white"
+              >
+                Go to dashboard
+                <span className="text-xs font-normal text-white/80">Hi, {user.name || user.email}</span>
+              </Link>
+            )}
 
             <div className="flex flex-col gap-1">
               {LINKS.map((l) => (

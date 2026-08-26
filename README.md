@@ -54,7 +54,14 @@ enforced twice: an optimistic "are you signed in" redirect in `src/proxy.ts`,
 and the authoritative role check in `src/app/admin/(dashboard)/layout.tsx`.
 Signed-out or non-admin visitors are bounced to `/admin/login`.
 
-To create your first admin:
+**To create your first admin, visit `/interface`** — a one-time bootstrap
+page. Sign in (or create an account right there) and it claims the admin
+role for you via `claim_first_admin()` (see `supabase/schema.sql`), which
+only succeeds while zero admins exist anywhere in the system — after that it
+fails cleanly every time, so it's safe to leave the page live permanently.
+It's not linked from any nav on purpose; just navigate to it directly.
+
+If you'd rather do it by hand in Supabase instead:
 
 1. Supabase Dashboard → **Authentication → Users → Add user** — set an email
    and password there directly (not via this app, and not by pasting a

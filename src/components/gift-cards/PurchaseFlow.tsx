@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import QRCode from "qrcode";
 import confetti from "canvas-confetti";
-import { Check, Copy, CreditCard, Gift, Loader2 } from "lucide-react";
+import { AlertCircle, Bitcoin, Check, Copy, CreditCard, Gift, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/Button";
 import { CardFields, type CardValue } from "@/components/CardFields";
+import { CryptoPayment } from "./CryptoPayment";
 import { cn, formatCurrency } from "@/lib/utils";
 import { purchaseGiftCard } from "@/app/gift-cards/actions";
 
@@ -14,13 +15,15 @@ const TIERS = [50, 100, 250, 500];
 
 type Step = "amount" | "payment" | "success";
 
-export const PurchaseFlow = () => {
+export const PurchaseFlow = ({ isRetry = false }: { isRetry?: boolean }) => {
   const [step, setStep] = useState<Step>("amount");
   const [amount, setAmount] = useState(100);
   const [customAmount, setCustomAmount] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
+  const [method, setMethod] = useState<"card" | "crypto">(isRetry ? "crypto" : "card");
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<{ code: string; amount: number } | null>(null);
   const [copied, setCopied] = useState(false);
   const [card, setCard] = useState<CardValue>({ name: "", number: "", expiry: "", cvc: "" });
@@ -29,20 +32,34 @@ export const PurchaseFlow = () => {
 
   const effectiveAmount = customAmount ? Number(customAmount) : amount;
 
-  const handlePay = (e: React.FormEvent) => {
+  const finish = (code: string, amt: number) => {
+    setIssued({ code, amount: amt });
+    setStep("success");
+    confetti({
+      particleCount: 100,
+      spread: 80,
+      origin: { y: 0.6 },
+      colors: ["#f97316", "#ea580c", "#3b82f6"],
+    });
+  };
+
+  const handleCardPay = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     startTransition(async () => {
-      const res = await purchaseGiftCard(effectiveAmount, buyerEmail, recipientEmail || undefined);
+      const res = await purchaseGiftCard(effectiveAmount, buyerEmail, recipientEmail || undefined, "card");
       if (res.ok) {
-        setIssued({ code: res.code, amount: res.amount });
-        setStep("success");
-        confetti({
-          particleCount: 100,
-          spread: 80,
-          origin: { y: 0.6 },
-          colors: ["#f97316", "#ea580c", "#3b82f6"],
-        });
+        finish(res.code, res.amount);
+      } else {
+        setError(res.message);
       }
+    });
+  };
+
+  const handleCryptoConfirmed = () => {
+    startTransition(async () => {
+      const res = await purchaseGiftCard(effectiveAmount, buyerEmail, recipientEmail || undefined, "crypto");
+      if (res.ok) finish(res.code, res.amount);
     });
   };
 
@@ -100,6 +117,7 @@ export const PurchaseFlow = () => {
             setStep("amount");
             setIssued(null);
             setRecipientEmail("");
+            setError(null);
           }}
         >
           Buy another
@@ -110,13 +128,34 @@ export const PurchaseFlow = () => {
 
   if (step === "payment") {
     return (
-      <form onSubmit={handlePay} className="flex w-full max-w-sm flex-col gap-4">
+      <div className="flex w-full max-w-sm flex-col gap-4">
         <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
           <span className="text-sm text-slate-500">Gift card amount</span>
           <span className="text-lg font-bold text-slate-900">
             {formatCurrency(effectiveAmount)}
           </span>
         </div>
+
+        {isRetry && (
+          <div className="flex items-start gap-2 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
+            <RefreshCw size={16} className="mt-0.5 shrink-0" />
+            Your last payment didn&apos;t go through — pay with crypto instead below.
+          </div>
+        )}
+
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600"
+            >
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <input
           required
@@ -134,17 +173,50 @@ export const PurchaseFlow = () => {
           className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-orange-400"
         />
 
-        <CardFields value={card} onChange={setCard} onValidChange={setCardValid} />
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setMethod("card")}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
+              method === "card"
+                ? "border-orange-500 bg-orange-50 text-orange-600"
+                : "border-slate-200 text-slate-500 hover:border-slate-300"
+            )}
+          >
+            <CreditCard size={16} /> Card
+          </button>
+          <button
+            type="button"
+            onClick={() => setMethod("crypto")}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
+              method === "crypto"
+                ? "border-orange-500 bg-orange-50 text-orange-600"
+                : "border-slate-200 text-slate-500 hover:border-slate-300"
+            )}
+          >
+            <Bitcoin size={16} /> Crypto
+          </button>
+        </div>
 
-        <Button
-          type="submit"
-          size="lg"
-          disabled={pending || !cardValid || !buyerEmail.includes("@")}
-          className="w-full gap-2"
-        >
-          {pending && <Loader2 size={18} className="animate-spin" />}
-          {pending ? "Processing…" : `Pay ${formatCurrency(effectiveAmount)}`}
-        </Button>
+        {method === "card" ? (
+          <form onSubmit={handleCardPay} className="flex flex-col gap-4">
+            <CardFields value={card} onChange={setCard} onValidChange={setCardValid} />
+            <Button
+              type="submit"
+              size="lg"
+              disabled={pending || !cardValid || !buyerEmail.includes("@")}
+              className="w-full gap-2"
+            >
+              {pending && <Loader2 size={18} className="animate-spin" />}
+              {pending ? "Processing…" : `Pay ${formatCurrency(effectiveAmount)}`}
+            </Button>
+          </form>
+        ) : (
+          <CryptoPayment amount={effectiveAmount} onConfirmed={handleCryptoConfirmed} />
+        )}
+
         <button
           type="button"
           onClick={() => setStep("amount")}
@@ -152,7 +224,7 @@ export const PurchaseFlow = () => {
         >
           Back
         </button>
-      </form>
+      </div>
     );
   }
 

@@ -473,6 +473,33 @@ export const testimonials: Testimonial[] = [
   },
 ];
 
+// Ground transit — same "fictional operators, real cities" pattern as
+// flightOffers, so the live departures board can show a genuinely
+// multi-modal terminal feel (heavy on Europe, as requested) without
+// implying real-time tracking of any real rail/coach company.
+export type TransitOffer = {
+  id: string;
+  mode: "train" | "bus";
+  operator: string;
+  from: string;
+  to: string;
+  departTime: string;
+  durationMins: number;
+  price: number;
+};
+
+export const transitOffers: TransitOffer[] = [
+  { id: "TR104", mode: "train", operator: "EuroSwift Rail", from: "Berlin", to: "Munich", departTime: "07:20", durationMins: 240, price: 89 },
+  { id: "TR228", mode: "train", operator: "EuroSwift Rail", from: "Berlin", to: "Amsterdam", departTime: "09:45", durationMins: 385, price: 112 },
+  { id: "TR351", mode: "train", operator: "Continental Express", from: "Paris", to: "London", departTime: "13:10", durationMins: 135, price: 145 },
+  { id: "TR467", mode: "train", operator: "Continental Express", from: "Frankfurt", to: "Brussels", departTime: "16:35", durationMins: 190, price: 98 },
+  { id: "TR582", mode: "train", operator: "EuroSwift Rail", from: "Munich", to: "Vienna", departTime: "18:50", durationMins: 250, price: 76 },
+  { id: "BU210", mode: "bus", operator: "LinkWay Coach", from: "Manchester", to: "London", departTime: "06:15", durationMins: 285, price: 32 },
+  { id: "BU344", mode: "bus", operator: "LinkWay Coach", from: "Edinburgh", to: "Manchester", departTime: "10:40", durationMins: 320, price: 38 },
+  { id: "BU459", mode: "bus", operator: "ContinentalLink", from: "Hamburg", to: "Berlin", departTime: "12:25", durationMins: 165, price: 24 },
+  { id: "BU573", mode: "bus", operator: "ContinentalLink", from: "Cologne", to: "Frankfurt", departTime: "15:05", durationMins: 145, price: 21 },
+];
+
 export const stats = [
   { label: "Daily active travelers", value: "1.8M+" },
   { label: "Countries covered", value: "250+" },

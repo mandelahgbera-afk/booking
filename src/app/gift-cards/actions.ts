@@ -4,10 +4,13 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { logAdminAction } from "@/lib/data";
+import { logAdminAction, getPlatformSettings } from "@/lib/data";
+import { resolvePaymentOutcome } from "@/lib/payment-simulation";
 import { WALLET_EMAIL_COOKIE, WALLET_MOCK_BALANCE_COOKIE } from "@/lib/wallet";
 import { sendEmail } from "@/lib/email/send";
-import { giftCardPurchasedEmail, giftCardRedeemedEmail } from "@/lib/email/templates";
+import { giftCardPurchasedEmail, giftCardRedeemedEmail, transactionFailedEmail } from "@/lib/email/templates";
+
+const siteUrl = process.env.NEXT_SITE_URL || "http://localhost:3000";
 
 // Demo codes that work even with zero Supabase setup, so the scanner/redeem
 // flow is fully try-able out of the box (matches supabase/seed.sql).
@@ -24,8 +27,29 @@ export type PurchaseResult =
 export async function purchaseGiftCard(
   amount: number,
   buyerEmail: string,
-  recipientEmail?: string
+  recipientEmail?: string,
+  method: "card" | "crypto" = "card"
 ): Promise<PurchaseResult> {
+  // Crypto is the guaranteed-resolution alt path offered after a card
+  // failure in this simulation, so it skips payment_mode entirely. Card
+  // goes through the same admin-controlled outcome as booking checkout.
+  if (method === "card") {
+    const settings = await getPlatformSettings();
+    const outcome = resolvePaymentOutcome(settings.payment_mode);
+    if (outcome === "fail") {
+      const copy = transactionFailedEmail({
+        type: "gift_card",
+        reference: `${amount}`,
+        amount,
+        retryUrl: `${siteUrl}/gift-cards?retry=crypto`,
+      });
+      await sendEmail({ to: buyerEmail, ...copy });
+      return { ok: false, message: "Your card was declined. Check your email for a retry link." };
+    }
+    // "pending" is treated as success for gift cards — there's no ongoing
+    // state to track for a code that's already generated, unlike a booking.
+  }
+
   let code: string;
   let finalAmount = amount;
 
@@ -39,6 +63,7 @@ export async function purchaseGiftCard(
       const { data, error } = await supabase.rpc("issue_gift_card", {
         p_amount: amount,
         p_recipient_email: recipientEmail || null,
+        p_buyer_email: buyerEmail,
       });
       if (error || !data) throw error ?? new Error("No card returned");
       code = data.code;
@@ -59,6 +84,29 @@ export async function purchaseGiftCard(
   }
 
   return { ok: true, code, amount: finalAmount };
+}
+
+export async function refundGiftCard(
+  code: string,
+  email: string
+): Promise<{ ok: boolean; message: string }> {
+  if (!isSupabaseConfigured) {
+    return { ok: false, message: "Refunds need Supabase configured." };
+  }
+  try {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase.rpc("refund_gift_card", {
+      p_code: code.trim().toUpperCase(),
+      p_email: email,
+    });
+    if (error) return { ok: false, message: error.message };
+    if (!data.success) return { ok: false, message: data.message };
+
+    await logAdminAction("gift_cards.refund", { code: data.code, amount: data.amount });
+    return { ok: true, message: `Refunded ${data.code}. A confirmation is on its way to your email.` };
+  } catch {
+    return { ok: false, message: "Refund failed." };
+  }
 }
 
 export type RedeemResult = { ok: boolean; message: string; amount?: number };

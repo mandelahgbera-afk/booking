@@ -12,3 +12,4 @@ export { giftCardPurchasedEmail } from "./giftCardPurchased";
 export { giftCardRedeemedEmail } from "./giftCardRedeemed";
 export { contactAutoReplyEmail } from "./contactAutoReply";
 export { flightDelayedEmail } from "./flightDelayed";
+export { transactionFailedEmail } from "./transactionFailed";

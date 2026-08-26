@@ -9,10 +9,13 @@ export const revalidate = 30;
 
 export default async function BookingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ retry?: string }>;
 }) {
   const { id } = await params;
+  const { retry } = await searchParams;
   const [offer, settings] = await Promise.all([
     getFlightOffer(id),
     getPlatformSettings(),
@@ -37,7 +40,7 @@ export default async function BookingPage({
         <h1 className="mb-8 text-2xl font-bold tracking-tight text-slate-900">
           Complete your booking
         </h1>
-        <BookingFlow offer={offer} settings={settings} />
+        <BookingFlow offer={offer} settings={settings} isRetry={retry === "wallet"} />
       </div>
     </div>
   );

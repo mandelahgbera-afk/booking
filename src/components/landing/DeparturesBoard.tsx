@@ -1,4 +1,5 @@
-import { flightOffers } from "@/lib/mock-data";
+import { PlaneTakeoff, TrainFront, Bus } from "lucide-react";
+import { flightOffers, transitOffers } from "@/lib/mock-data";
 
 const STATUSES = ["On Time", "Boarding", "On Time", "Delayed", "On Time", "Departed"] as const;
 
@@ -9,11 +10,53 @@ const STATUS_STYLE: Record<(typeof STATUSES)[number], string> = {
   Departed: "text-slate-500",
 };
 
+const MODE_ICON = { flight: PlaneTakeoff, train: TrainFront, bus: Bus };
+
+type BoardRow = {
+  key: string;
+  mode: "flight" | "train" | "bus";
+  from: string;
+  to: string;
+  label: string;
+  departTime: string;
+  color: string;
+  status: (typeof STATUSES)[number];
+};
+
 export const DeparturesBoard = () => {
-  const rows = flightOffers.map((o, i) => ({
-    ...o,
-    status: STATUSES[i % STATUSES.length],
+  const flightRows: BoardRow[] = flightOffers.map((o) => ({
+    key: o.id,
+    mode: "flight",
+    from: o.from.code,
+    to: o.to.code,
+    label: o.flightNumber,
+    departTime: o.departTime,
+    color: o.airline.color,
+    status: "On Time",
   }));
+
+  const transitRows: BoardRow[] = transitOffers.map((t) => ({
+    key: t.id,
+    mode: t.mode,
+    from: t.from,
+    to: t.to,
+    label: t.id,
+    departTime: t.departTime,
+    color: t.mode === "train" ? "#3b82f6" : "#a855f7",
+    status: "On Time",
+  }));
+
+  // Interleave transit rows among flights instead of blocking them
+  // together, so the board reads as one busy multi-modal terminal.
+  const merged: BoardRow[] = [];
+  let ti = 0;
+  flightRows.forEach((f, i) => {
+    merged.push(f);
+    if (i % 2 === 1 && ti < transitRows.length) merged.push(transitRows[ti++]);
+  });
+  merged.push(...transitRows.slice(ti));
+
+  const rows = merged.map((r, i) => ({ ...r, status: STATUSES[i % STATUSES.length] }));
   const loop = [...rows, ...rows];
 
   return (
@@ -29,35 +72,39 @@ export const DeparturesBoard = () => {
               Live departures
             </span>
           </div>
-          <span className="font-mono text-xs text-slate-500">{rows.length} flights in the board</span>
+          <span className="font-mono text-xs text-slate-500">
+            {rows.length} departures &middot; flights, trains &amp; buses
+          </span>
         </div>
 
         <div className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-black/40 [mask-image:linear-gradient(to_right,transparent,black_6%,black_94%,transparent)]">
-          <div className="flex shrink-0 animate-[marquee_55s_linear_infinite] gap-0 group-hover:[animation-play-state:paused]">
-            {loop.map((f, i) => (
-              <div
-                key={`${f.id}-${i}`}
-                className="flex w-[280px] shrink-0 items-center gap-3 border-r border-slate-800/80 px-5 py-4 font-mono"
-              >
-                <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: f.airline.color }}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-[13px] font-bold text-slate-100">
-                    {f.from.code}
-                    <span className="text-slate-600">→</span>
-                    {f.to.code}
+          <div className="flex shrink-0 animate-[marquee_22s_linear_infinite] gap-0 group-hover:[animation-play-state:paused]">
+            {loop.map((r, i) => {
+              const Icon = MODE_ICON[r.mode];
+              return (
+                <div
+                  key={`${r.key}-${i}`}
+                  className="flex w-[280px] shrink-0 items-center gap-3 border-r border-slate-800/80 px-5 py-4 font-mono"
+                >
+                  <Icon size={14} className="shrink-0" style={{ color: r.color }} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 text-[13px] font-bold text-slate-100">
+                      <span className="truncate">{r.from}</span>
+                      <span className="shrink-0 text-slate-600">→</span>
+                      <span className="truncate">{r.to}</span>
+                    </div>
+                    <div className="mt-0.5 truncate text-[11px] text-slate-500">
+                      {r.label} &middot; {r.departTime}
+                    </div>
                   </div>
-                  <div className="mt-0.5 text-[11px] text-slate-500">
-                    {f.flightNumber} &middot; {f.departTime}
-                  </div>
+                  <span
+                    className={`shrink-0 text-[11px] font-semibold uppercase tracking-wide ${STATUS_STYLE[r.status]}`}
+                  >
+                    {r.status}
+                  </span>
                 </div>
-                <span className={`shrink-0 text-[11px] font-semibold uppercase tracking-wide ${STATUS_STYLE[f.status]}`}>
-                  {f.status}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

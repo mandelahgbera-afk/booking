@@ -63,7 +63,8 @@ export type BookingPassenger = {
 export type BookingRow = {
   id: string;
   reference: string;
-  user_id: string;
+  user_id: string | null;
+  guest_email: string | null;
   flight_id: string;
   passengers: BookingPassenger[];
   seats: string[];
@@ -76,9 +77,10 @@ export type BookingRow = {
 export type PaymentRow = {
   id: string;
   booking_id: string;
-  user_id: string;
+  user_id: string | null;
+  guest_email: string | null;
   amount: number;
-  method: "card" | "apple_pay" | "google_pay" | "paypal" | "split";
+  method: "card" | "apple_pay" | "google_pay" | "paypal" | "split" | "wallet";
   status: "pending" | "completed" | "failed";
   simulated_outcome: "success" | "pending" | "fail" | null;
   transaction_id: string;
@@ -135,6 +137,7 @@ export type GiftCardRow = {
   currency: string;
   status: "active" | "redeemed" | "void";
   recipient_email: string | null;
+  buyer_email: string | null;
   issued_by: string;
   redeemed_email: string | null;
   redeemed_at: string | null;
@@ -158,6 +161,36 @@ export type SpendWalletCreditResult =
   | { success: true; remaining: number }
   | { success: false; message: string };
 
+export type ClaimFirstAdminResult =
+  | { success: true; message: string }
+  | { success: false; message: string };
+
+export type CreateBookingResult =
+  | { success: true; reference: string; id: string }
+  | { success: false; message: string };
+
+export type BookingLookupResult =
+  | {
+      success: true;
+      id: string;
+      reference: string;
+      flight_id: string;
+      total_amount: number;
+      status: BookingRow["status"];
+      created_at: string;
+      seats: string[];
+      cabin: string;
+    }
+  | { success: false; message: string };
+
+export type RefundBookingResult =
+  | { success: true; amount: number; reference: string }
+  | { success: false; message: string };
+
+export type RefundGiftCardResult =
+  | { success: true; amount: number; code: string }
+  | { success: false; message: string };
+
 export type Database = {
   public: {
     Tables: {
@@ -176,8 +209,33 @@ export type Database = {
     Views: Record<string, never>;
     Functions: {
       issue_gift_card: {
-        Args: { p_amount: number; p_recipient_email?: string | null };
+        Args: { p_amount: number; p_recipient_email?: string | null; p_buyer_email?: string | null };
         Returns: GiftCardRow;
+      };
+      refund_gift_card: {
+        Args: { p_code: string; p_email: string };
+        Returns: RefundGiftCardResult;
+      };
+      create_booking: {
+        Args: {
+          p_flight_id: string;
+          p_guest_email: string;
+          p_passengers: BookingPassenger[];
+          p_seats: string[];
+          p_cabin: string;
+          p_total_amount: number;
+          p_method: string;
+          p_transaction_id: string;
+        };
+        Returns: CreateBookingResult;
+      };
+      get_booking_by_reference: {
+        Args: { p_reference: string; p_email: string };
+        Returns: BookingLookupResult;
+      };
+      refund_booking: {
+        Args: { p_reference: string; p_email: string };
+        Returns: RefundBookingResult;
       };
       redeem_gift_card: {
         Args: { p_code: string; p_email: string };
@@ -190,6 +248,10 @@ export type Database = {
       spend_wallet_credit: {
         Args: { p_email: string; p_amount: number; p_source: string };
         Returns: SpendWalletCreditResult;
+      };
+      claim_first_admin: {
+        Args: Record<string, never>;
+        Returns: ClaimFirstAdminResult;
       };
     };
     Enums: Record<string, never>;

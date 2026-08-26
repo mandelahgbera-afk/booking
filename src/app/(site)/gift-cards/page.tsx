@@ -2,14 +2,19 @@ import { Gift, Sparkles, Wallet } from "lucide-react";
 import { ShaderBackground } from "@/components/gift-cards/ShaderBackground";
 import { PurchaseFlow } from "@/components/gift-cards/PurchaseFlow";
 import { RedeemPanelWrapper } from "@/components/gift-cards/RedeemPanelWrapper";
+import { RefundCard } from "@/components/gift-cards/RefundCard";
 import { getWalletEmail } from "@/lib/wallet";
 import { getWalletBalance } from "@/app/gift-cards/actions";
 import { formatCurrency } from "@/lib/utils";
 
 export const revalidate = 0;
 
-export default async function GiftCardsPage() {
-  const email = await getWalletEmail();
+export default async function GiftCardsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ retry?: string }>;
+}) {
+  const [email, { retry }] = await Promise.all([getWalletEmail(), searchParams]);
   const balance = await getWalletBalance(email);
 
   return (
@@ -42,7 +47,7 @@ export default async function GiftCardsPage() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-6 pb-24 lg:grid-cols-2">
+      <section className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-6 pb-12 lg:grid-cols-2">
         <div className="flex flex-col items-center gap-6 rounded-3xl border border-slate-200 bg-white p-8">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl gradient-primary text-white">
             <Gift size={20} />
@@ -53,7 +58,7 @@ export default async function GiftCardsPage() {
               Pick an amount, pay, and get a code + QR instantly.
             </p>
           </div>
-          <PurchaseFlow />
+          <PurchaseFlow isRetry={retry === "crypto"} />
         </div>
 
         <div className="flex flex-col items-center gap-6 rounded-3xl border border-slate-200 bg-white p-8">
@@ -68,6 +73,10 @@ export default async function GiftCardsPage() {
           </div>
           <RedeemPanelWrapper initialEmail={email} />
         </div>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-6 pb-24">
+        <RefundCard />
       </section>
     </div>
   );

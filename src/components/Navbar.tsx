@@ -39,9 +39,12 @@ export const Navbar = ({
         <div className="hidden items-center gap-4 md:flex">
           {user ? (
             <>
-              <span className="max-w-[10rem] truncate text-sm font-medium text-slate-600">
+              <Link
+                href="/dashboard"
+                className="max-w-[10rem] truncate text-sm font-medium text-slate-600 hover:text-orange-500"
+              >
                 Hi, {user.name || user.email}
-              </span>
+              </Link>
               <Button variant="ghost" className="gap-2" onClick={onSignOut}>
                 <LogOut size={16} />
                 Sign out

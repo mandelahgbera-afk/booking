@@ -70,7 +70,11 @@ create index if not exists flights_route_idx on public.flights (from_code, to_co
 create table if not exists public.bookings (
   id uuid primary key default gen_random_uuid(),
   reference text not null unique default upper(substr(md5(random()::text), 1, 6)),
-  user_id uuid not null references auth.users (id) on delete cascade,
+  -- Guest checkout is the norm here — no sign-in is required to book a
+  -- flight — so user_id is nullable and guest_email is how a booking gets
+  -- looked up on /manage-booking and how refund eligibility is checked.
+  user_id uuid references auth.users (id) on delete cascade,
+  guest_email text,
   flight_id uuid not null references public.flights (id),
   passengers jsonb not null default '[]'::jsonb,   -- [{ name, email, seat }]
   seats text[] not null default '{}',
@@ -78,10 +82,18 @@ create table if not exists public.bookings (
   total_amount numeric(10, 2) not null,
   status text not null default 'pending'
     check (status in ('pending', 'confirmed', 'cancelled', 'refunded')),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint bookings_owner_present check (user_id is not null or guest_email is not null)
 );
 
 create index if not exists bookings_user_idx on public.bookings (user_id);
+create index if not exists bookings_guest_email_idx on public.bookings (guest_email);
+create index if not exists bookings_reference_idx on public.bookings (reference);
+
+-- Idempotent — picks up the guest-checkout columns on a project that
+-- already ran an earlier version of this file.
+alter table public.bookings alter column user_id drop not null;
+alter table public.bookings add column if not exists guest_email text;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- payments  (simulated payment intents)
@@ -89,14 +101,134 @@ create index if not exists bookings_user_idx on public.bookings (user_id);
 create table if not exists public.payments (
   id uuid primary key default gen_random_uuid(),
   booking_id uuid not null references public.bookings (id) on delete cascade,
-  user_id uuid not null references auth.users (id) on delete cascade,
+  user_id uuid references auth.users (id) on delete cascade,
+  guest_email text,
   amount numeric(10, 2) not null,
-  method text not null default 'card' check (method in ('card', 'apple_pay', 'google_pay', 'paypal', 'split')),
+  method text not null default 'card' check (method in ('card', 'apple_pay', 'google_pay', 'paypal', 'split', 'wallet')),
   status text not null default 'pending' check (status in ('pending', 'completed', 'failed')),
   simulated_outcome text check (simulated_outcome in ('success', 'pending', 'fail')),
   transaction_id text not null default ('sim_' || substr(md5(random()::text), 1, 12)),
   created_at timestamptz not null default now()
 );
+
+-- Idempotent — same guest-checkout support as bookings above.
+alter table public.payments alter column user_id drop not null;
+alter table public.payments add column if not exists guest_email text;
+do $$
+begin
+  alter table public.payments drop constraint payments_method_check;
+exception when undefined_object then null;
+end $$;
+alter table public.payments add constraint payments_method_check
+  check (method in ('card', 'apple_pay', 'google_pay', 'paypal', 'split', 'wallet'));
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Booking functions — guest checkout, so these are SECURITY DEFINER and
+-- enforce ownership via guest_email themselves rather than relying on
+-- auth.uid() (see the "no public policy" note on bookings/payments above).
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- Called once payment succeeds. Writes the booking + its payment row in one
+-- shot so a booking can never exist without a matching payment record.
+create or replace function public.create_booking(
+  p_flight_id uuid,
+  p_guest_email text,
+  p_passengers jsonb,
+  p_seats text[],
+  p_cabin text,
+  p_total_amount numeric,
+  p_method text,
+  p_transaction_id text
+)
+returns jsonb as $$
+declare
+  v_booking public.bookings;
+  v_uid uuid := auth.uid();
+begin
+  insert into public.bookings (user_id, guest_email, flight_id, passengers, seats, cabin, total_amount, status)
+  values (v_uid, lower(p_guest_email), p_flight_id, p_passengers, p_seats, p_cabin, p_total_amount, 'confirmed')
+  returning * into v_booking;
+
+  insert into public.payments (booking_id, user_id, guest_email, amount, method, status, simulated_outcome, transaction_id)
+  values (v_booking.id, v_uid, lower(p_guest_email), p_total_amount, p_method, 'completed', 'success', p_transaction_id);
+
+  return jsonb_build_object('success', true, 'reference', v_booking.reference, 'id', v_booking.id);
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function public.create_booking(uuid, text, jsonb, text[], text, numeric, text, text) to anon, authenticated;
+
+-- Looks up a booking by reference + the email that booked it — the only
+-- credential a guest has, so this is how /manage-booking works without
+-- requiring sign-in. Never leaks whether a reference exists at all if the
+-- email doesn't match it, same anti-enumeration shape as redeem_gift_card.
+create or replace function public.get_booking_by_reference(p_reference text, p_email text)
+returns jsonb as $$
+declare
+  v_booking public.bookings;
+begin
+  select * into v_booking
+  from public.bookings
+  where reference = upper(trim(p_reference))
+    and (guest_email = lower(p_email) or user_id = auth.uid());
+
+  if v_booking.id is null then
+    return jsonb_build_object('success', false, 'message', 'No booking found for that reference and email.');
+  end if;
+
+  return jsonb_build_object(
+    'success', true,
+    'id', v_booking.id,
+    'reference', v_booking.reference,
+    'flight_id', v_booking.flight_id,
+    'total_amount', v_booking.total_amount,
+    'status', v_booking.status,
+    'created_at', v_booking.created_at,
+    'seats', to_jsonb(v_booking.seats),
+    'cabin', v_booking.cabin
+  );
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function public.get_booking_by_reference(text, text) to anon, authenticated;
+
+-- Self-service refund — only within the same ownership check as lookup
+-- above, only for a 'confirmed' booking, and only once 24h have passed
+-- since booking (mirrors the 24h free-cancellation window described on
+-- /terms). Also flips the matching payment row so the ledger stays honest.
+create or replace function public.refund_booking(p_reference text, p_email text)
+returns jsonb as $$
+declare
+  v_booking public.bookings;
+begin
+  select * into v_booking
+  from public.bookings
+  where reference = upper(trim(p_reference))
+    and (guest_email = lower(p_email) or user_id = auth.uid());
+
+  if v_booking.id is null then
+    return jsonb_build_object('success', false, 'message', 'No booking found for that reference and email.');
+  end if;
+
+  if v_booking.status <> 'confirmed' then
+    return jsonb_build_object('success', false, 'message', 'This booking is not eligible for a refund.');
+  end if;
+
+  if v_booking.created_at > now() - interval '24 hours' then
+    return jsonb_build_object(
+      'success', false,
+      'message', 'Refunds open 24 hours after booking. Check back soon.'
+    );
+  end if;
+
+  update public.bookings set status = 'refunded' where id = v_booking.id;
+  update public.payments set status = 'failed' where booking_id = v_booking.id;
+
+  return jsonb_build_object('success', true, 'amount', v_booking.total_amount, 'reference', v_booking.reference);
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function public.refund_booking(text, text) to anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- reviews  (landing page testimonials, editable from admin)
@@ -152,6 +284,7 @@ create table if not exists public.gift_cards (
   currency text not null default 'USD',
   status text not null default 'active' check (status in ('active', 'redeemed', 'void')),
   recipient_email text,
+  buyer_email text,   -- who paid for it — needed to check refund eligibility
   issued_by text not null default 'purchase',   -- 'purchase' | 'admin:<name>'
   redeemed_email text,
   redeemed_at timestamptz,
@@ -160,6 +293,11 @@ create table if not exists public.gift_cards (
 
 create index if not exists gift_cards_status_idx on public.gift_cards (status);
 create index if not exists gift_cards_redeemed_email_idx on public.gift_cards (redeemed_email);
+create index if not exists gift_cards_buyer_email_idx on public.gift_cards (buyer_email);
+
+-- Idempotent — picks up buyer_email on a project that already ran an
+-- earlier version of this file.
+alter table public.gift_cards add column if not exists buyer_email text;
 
 -- Generates a human-friendly code like AIRFLY-7K2M-9QRT.
 create or replace function public.generate_gift_card_code()
@@ -181,7 +319,11 @@ $$ language plpgsql volatile;
 -- Public purchase flow: anyone can call this to mint an active gift card.
 -- issued_by is hardcoded to 'purchase' here (never trusts a client-supplied
 -- value), so this can't be used to forge an admin-issued card.
-create or replace function public.issue_gift_card(p_amount numeric, p_recipient_email text default null)
+create or replace function public.issue_gift_card(
+  p_amount numeric,
+  p_recipient_email text default null,
+  p_buyer_email text default null
+)
 returns public.gift_cards as $$
 declare
   v_code text;
@@ -194,8 +336,8 @@ begin
   loop
     v_code := public.generate_gift_card_code();
     begin
-      insert into public.gift_cards (code, amount, recipient_email, issued_by)
-      values (v_code, p_amount, p_recipient_email, 'purchase')
+      insert into public.gift_cards (code, amount, recipient_email, buyer_email, issued_by)
+      values (v_code, p_amount, p_recipient_email, lower(p_buyer_email), 'purchase')
       returning * into v_row;
       exit;
     exception when unique_violation then
@@ -207,7 +349,43 @@ begin
 end;
 $$ language plpgsql security definer set search_path = public;
 
-grant execute on function public.issue_gift_card(numeric, text) to anon, authenticated;
+grant execute on function public.issue_gift_card(numeric, text, text) to anon, authenticated;
+
+-- Self-service refund — mirrors refund_booking's shape: same 24h window,
+-- same "prove ownership via the email that paid for it" check. Only works
+-- while the card is still unredeemed (status = 'active') — once spent, the
+-- value's gone, so there's nothing left to refund.
+create or replace function public.refund_gift_card(p_code text, p_email text)
+returns jsonb as $$
+declare
+  v_row public.gift_cards;
+begin
+  select * into v_row
+  from public.gift_cards
+  where code = upper(trim(p_code)) and buyer_email = lower(p_email);
+
+  if v_row.id is null then
+    return jsonb_build_object('success', false, 'message', 'No gift card found for that code and email.');
+  end if;
+
+  if v_row.status <> 'active' then
+    return jsonb_build_object('success', false, 'message', 'This gift card has already been used or refunded.');
+  end if;
+
+  if v_row.created_at > now() - interval '24 hours' then
+    return jsonb_build_object(
+      'success', false,
+      'message', 'Refunds open 24 hours after purchase. Check back soon.'
+    );
+  end if;
+
+  update public.gift_cards set status = 'void' where id = v_row.id;
+
+  return jsonb_build_object('success', true, 'amount', v_row.amount, 'code', v_row.code);
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function public.refund_gift_card(text, text) to anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- wallet_transactions
@@ -393,6 +571,53 @@ drop policy if exists "profiles_update_own_or_admin" on public.profiles;
 create policy "profiles_update_own_or_admin" on public.profiles
   for update using (auth.uid() = id or public.is_admin());
 
+-- Hardening: the policy above lets a user update their OWN row (so they can
+-- edit their name/avatar/phone), but without this trigger that would also
+-- let any signed-in user set their own role to 'admin' via a direct API
+-- call — the USING clause has no column-level restriction. This trigger
+-- blocks any role change made by a non-admin, full stop. The only sanctioned
+-- way to become the first admin is claim_first_admin() below, which is
+-- SECURITY DEFINER and enforces its own "only if zero admins exist" rule.
+create or replace function public.prevent_self_role_escalation()
+returns trigger as $$
+begin
+  if new.role is distinct from old.role and not public.is_admin() then
+    raise exception 'Only an admin can change a profile''s role.';
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists guard_profile_role on public.profiles;
+create trigger guard_profile_role
+  before update on public.profiles
+  for each row execute function public.prevent_self_role_escalation();
+
+-- Bootstrap path for the very first admin — lets a signed-in user claim the
+-- admin role themselves, but ONLY while zero admins exist anywhere in the
+-- system. Used by the one-time /interface setup page. Safe to leave in
+-- place permanently: it becomes a no-op the moment any admin exists.
+create or replace function public.claim_first_admin()
+returns jsonb as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then
+    return jsonb_build_object('success', false, 'message', 'Not signed in.');
+  end if;
+
+  if exists (select 1 from public.profiles where role = 'admin') then
+    return jsonb_build_object('success', false, 'message', 'An admin account already exists.');
+  end if;
+
+  update public.profiles set role = 'admin' where id = v_uid;
+
+  return jsonb_build_object('success', true, 'message', 'You are now an admin.');
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function public.claim_first_admin() to authenticated;
+
 -- airports / airlines / flights / reviews: public read, admin write
 drop policy if exists "airports_public_read" on public.airports;
 create policy "airports_public_read" on public.airports for select using (true);
@@ -418,27 +643,30 @@ create policy "reviews_admin_write" on public.reviews for update using (public.i
 drop policy if exists "reviews_admin_delete" on public.reviews;
 create policy "reviews_admin_delete" on public.reviews for delete using (public.is_admin());
 
--- bookings: owner + admin only
+-- bookings: signed-in owners can read their own rows; admins get full
+-- access. No public insert/update policy at all — guest checkout is the
+-- norm here, so all creation/lookup/refund goes through the SECURITY
+-- DEFINER functions below (create_booking, get_booking_by_reference,
+-- refund_booking), which enforce guest_email ownership themselves instead
+-- of relying on auth.uid().
 drop policy if exists "bookings_owner_or_admin_select" on public.bookings;
 create policy "bookings_owner_or_admin_select" on public.bookings
   for select using (auth.uid() = user_id or public.is_admin());
 drop policy if exists "bookings_owner_insert" on public.bookings;
-create policy "bookings_owner_insert" on public.bookings
-  for insert with check (auth.uid() = user_id);
-drop policy if exists "bookings_owner_or_admin_update" on public.bookings;
-create policy "bookings_owner_or_admin_update" on public.bookings
-  for update using (auth.uid() = user_id or public.is_admin());
+drop policy if exists "bookings_admin_all" on public.bookings;
+create policy "bookings_admin_all" on public.bookings
+  for all using (public.is_admin()) with check (public.is_admin());
 
--- payments: owner + admin only
+-- payments: same shape as bookings — admin-only direct table access,
+-- everything else via functions.
 drop policy if exists "payments_owner_or_admin_select" on public.payments;
 create policy "payments_owner_or_admin_select" on public.payments
   for select using (auth.uid() = user_id or public.is_admin());
 drop policy if exists "payments_owner_insert" on public.payments;
-create policy "payments_owner_insert" on public.payments
-  for insert with check (auth.uid() = user_id);
 drop policy if exists "payments_admin_update" on public.payments;
-create policy "payments_admin_update" on public.payments
-  for update using (public.is_admin());
+drop policy if exists "payments_admin_all" on public.payments;
+create policy "payments_admin_all" on public.payments
+  for all using (public.is_admin()) with check (public.is_admin());
 
 -- platform_settings: public read (client needs payment_mode / booking_enabled), admin write
 drop policy if exists "platform_settings_public_read" on public.platform_settings;

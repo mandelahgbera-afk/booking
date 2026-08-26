@@ -1,63 +1,64 @@
 "use client";
 
-import { useState } from "react";
-import { CreditCard, Loader2, Lock, Smartphone, SplitSquareHorizontal, Wallet } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CreditCard, Loader2, Lock, Smartphone, SplitSquareHorizontal, Wallet, RefreshCw } from "lucide-react";
 import { Button } from "@/components/Button";
 import { CardFields, type CardValue } from "@/components/CardFields";
 import { detectCardBrand, brandLabel } from "@/lib/card-validation";
+import { resolvePaymentOutcome, type PaymentOutcome } from "@/lib/payment-simulation";
+import { getWalletBalance, spendWalletCredit } from "@/app/gift-cards/actions";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { Passenger } from "./PassengerForm";
 import type { PlatformSettingsRow } from "@/lib/supabase/types";
 
-export type PaymentOutcome = "success" | "pending" | "fail";
+export type { PaymentOutcome };
 
 const METHODS = [
   { key: "card", label: "Card", icon: CreditCard },
   { key: "apple_pay", label: "Apple Pay", icon: Smartphone },
   { key: "google_pay", label: "Google Pay", icon: Wallet },
+  { key: "wallet", label: "Wallet", icon: Wallet },
 ] as const;
-
-function resolveOutcome(mode: PlatformSettingsRow["payment_mode"]): PaymentOutcome {
-  switch (mode) {
-    case "simulate_pending":
-      return "pending";
-    case "simulate_fail":
-      return "fail";
-    case "random": {
-      const r = Math.random();
-      if (r < 0.15) return "fail";
-      if (r < 0.3) return "pending";
-      return "success";
-    }
-    default:
-      return "success";
-  }
-}
 
 export const PaymentStep = ({
   total,
   passengers,
   paymentMode,
+  isRetry = false,
   onResult,
 }: {
   total: number;
   passengers: Passenger[];
   paymentMode: PlatformSettingsRow["payment_mode"];
-  onResult: (outcome: PaymentOutcome, transactionId: string, method: string) => void;
+  isRetry?: boolean;
+  onResult: (outcome: PaymentOutcome, transactionId: string, method: string) => void | Promise<void>;
 }) => {
-  const [method, setMethod] = useState<(typeof METHODS)[number]["key"]>("card");
+  const [method, setMethod] = useState<(typeof METHODS)[number]["key"]>(isRetry ? "wallet" : "card");
   const [split, setSplit] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [card, setCard] = useState<CardValue>({ name: "", number: "", expiry: "", cvc: "" });
   const [cardValid, setCardValid] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
   const share = split && passengers.length > 1 ? total / passengers.length : total;
+  const walletEmail = passengers[0]?.email;
 
-  const handlePay = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (method !== "wallet" || !walletEmail) return;
+    let cancelled = false;
+    getWalletBalance(walletEmail).then((b) => {
+      if (!cancelled) setWalletBalance(b);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [method, walletEmail]);
+
+  const handleCardPay = (e: React.FormEvent) => {
     e.preventDefault();
     setProcessing(true);
     setTimeout(() => {
-      const outcome = resolveOutcome(paymentMode);
+      const outcome = resolvePaymentOutcome(paymentMode);
       const transactionId = `sim_${Math.random().toString(36).slice(2, 12)}`;
       setProcessing(false);
 
@@ -70,14 +71,30 @@ export const PaymentStep = ({
     }, 1400);
   };
 
+  const handleWalletPay = async () => {
+    if (!walletEmail) return;
+    setProcessing(true);
+    const res = await spendWalletCredit(walletEmail, share, "booking");
+    setProcessing(false);
+    if (!res.ok) return; // insufficient balance — button stays disabled by the check below anyway
+    onResult("success", `sim_${Math.random().toString(36).slice(2, 12)}`, "Wallet balance");
+  };
+
   return (
-    <form onSubmit={handlePay} className="rounded-3xl border border-slate-200 bg-white p-6">
+    <div className="rounded-3xl border border-slate-200 bg-white p-6">
       <div className="mb-5 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-900">Payment</h3>
         <span className="flex items-center gap-1 text-xs text-slate-400">
           <Lock size={12} /> Simulated · no real charge
         </span>
       </div>
+
+      {isRetry && (
+        <div className="mb-5 flex items-start gap-2 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
+          <RefreshCw size={16} className="mt-0.5 shrink-0" />
+          Your last payment didn&apos;t go through — pay with your wallet balance instead below.
+        </div>
+      )}
 
       <div className="mb-5 flex gap-2">
         {METHODS.map((m) => (
@@ -99,49 +116,124 @@ export const PaymentStep = ({
       </div>
 
       {method === "card" && (
-        <CardFields value={card} onChange={setCard} onValidChange={setCardValid} />
-      )}
-
-      {method !== "card" && (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-400">
-          You&apos;ll confirm this payment in the {method === "apple_pay" ? "Apple Pay" : "Google Pay"} sheet (simulated).
-        </div>
-      )}
-
-      {passengers.length > 1 && (
-        <label className="mt-4 flex cursor-pointer items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          <span className="flex items-center gap-2">
-            <SplitSquareHorizontal size={16} className="text-orange-500" />
-            Split payment across {passengers.length} travelers
-          </span>
-          <input
-            type="checkbox"
-            checked={split}
-            onChange={(e) => setSplit(e.target.checked)}
-            className="h-4 w-4 rounded accent-orange-500"
+        <form onSubmit={handleCardPay}>
+          <CardFields value={card} onChange={setCard} onValidChange={setCardValid} />
+          <PaySummary
+            share={share}
+            split={split}
+            passengers={passengers}
+            onSplitChange={setSplit}
+            processing={processing}
+            disabled={!cardValid}
           />
-        </label>
+        </form>
       )}
 
-      <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
-        <div>
-          <div className="text-xs text-slate-400">
-            {split && passengers.length > 1 ? "You'll pay" : "Total due"}
+      {(method === "apple_pay" || method === "google_pay") && (
+        <>
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-400">
+            You&apos;ll confirm this payment in the {method === "apple_pay" ? "Apple Pay" : "Google Pay"} sheet (simulated).
           </div>
-          <div className="text-2xl font-bold text-slate-900">
-            {formatCurrency(share)}
+          <form onSubmit={handleCardPay}>
+            <PaySummary
+              share={share}
+              split={split}
+              passengers={passengers}
+              onSplitChange={setSplit}
+              processing={processing}
+              disabled={false}
+            />
+          </form>
+        </>
+      )}
+
+      {method === "wallet" && (
+        <div>
+          {!walletEmail ? (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-400">
+              Add a traveler email in the previous step to use your wallet balance.
+            </div>
+          ) : walletBalance === null ? (
+            <div className="flex items-center justify-center gap-2 rounded-xl bg-slate-50 p-6 text-sm text-slate-400">
+              <Loader2 size={16} className="animate-spin" /> Checking balance…
+            </div>
+          ) : (
+            <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Wallet balance</span>
+                <span className="font-bold text-slate-900">{formatCurrency(walletBalance)}</span>
+              </div>
+              {walletBalance < share && (
+                <p className="mt-2 text-xs text-red-500">
+                  Not enough balance to cover {formatCurrency(share)}. Top up on the Gift Cards page.
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
+            <div>
+              <div className="text-xs text-slate-400">Total due</div>
+              <div className="text-2xl font-bold text-slate-900">{formatCurrency(share)}</div>
+            </div>
+            <Button
+              size="lg"
+              disabled={processing || !walletEmail || walletBalance === null || walletBalance < share}
+              onClick={handleWalletPay}
+              className="gap-2"
+            >
+              {processing && <Loader2 size={18} className="animate-spin" />}
+              {processing ? "Processing…" : `Pay ${formatCurrency(share)}`}
+            </Button>
           </div>
         </div>
-        <Button
-          type="submit"
-          size="lg"
-          disabled={processing || (method === "card" && !cardValid)}
-          className="gap-2"
-        >
-          {processing && <Loader2 size={18} className="animate-spin" />}
-          {processing ? "Processing…" : `Pay ${formatCurrency(share)}`}
-        </Button>
-      </div>
-    </form>
+      )}
+    </div>
   );
 };
+
+const PaySummary = ({
+  share,
+  split,
+  passengers,
+  onSplitChange,
+  processing,
+  disabled,
+}: {
+  share: number;
+  split: boolean;
+  passengers: Passenger[];
+  onSplitChange: (v: boolean) => void;
+  processing: boolean;
+  disabled: boolean;
+}) => (
+  <>
+    {passengers.length > 1 && (
+      <label className="mt-4 flex cursor-pointer items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        <span className="flex items-center gap-2">
+          <SplitSquareHorizontal size={16} className="text-orange-500" />
+          Split payment across {passengers.length} travelers
+        </span>
+        <input
+          type="checkbox"
+          checked={split}
+          onChange={(e) => onSplitChange(e.target.checked)}
+          className="h-4 w-4 rounded accent-orange-500"
+        />
+      </label>
+    )}
+
+    <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
+      <div>
+        <div className="text-xs text-slate-400">
+          {split && passengers.length > 1 ? "You'll pay" : "Total due"}
+        </div>
+        <div className="text-2xl font-bold text-slate-900">{formatCurrency(share)}</div>
+      </div>
+      <Button type="submit" size="lg" disabled={processing || disabled} className="gap-2">
+        {processing && <Loader2 size={18} className="animate-spin" />}
+        {processing ? "Processing…" : `Pay ${formatCurrency(share)}`}
+      </Button>
+    </div>
+  </>
+);

@@ -15,7 +15,7 @@ const COLUMNS = [
     title: "Support",
     links: [
       { label: "Help center", href: "/contact" },
-      { label: "Manage a booking", href: "/flights" },
+      { label: "Manage a booking", href: "/manage-booking" },
       { label: "Gift cards & wallet", href: "/gift-cards" },
     ],
   },

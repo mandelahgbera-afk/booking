@@ -1,20 +1,25 @@
 "use server";
 
 import { sendEmail } from "@/lib/email/send";
-import { bookingConfirmationEmail, paymentReceiptEmail } from "@/lib/email/templates";
+import { bookingConfirmationEmail, paymentReceiptEmail, transactionFailedEmail } from "@/lib/email/templates";
+import { createPublicClient } from "@/lib/supabase/public";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Passenger } from "@/components/booking/PassengerForm";
 import type { FlightOffer } from "@/lib/mock-data";
 
-// Fired once payment succeeds — sends the confirmation + receipt to the
-// primary passenger. Best-effort by design (sendEmail never throws): a slow
-// or failed email must never block the confirmation screen the traveler is
-// already looking at.
-export async function sendBookingEmails({
+const siteUrl = process.env.NEXT_SITE_URL || "http://localhost:3000";
+
+// Fired once payment succeeds. Persists the booking (when Supabase is
+// configured — in mock mode there's nothing to write to, so this just
+// returns null and the caller keeps its client-generated reference) and
+// sends the confirmation + receipt. Email is best-effort by design
+// (sendEmail never throws): a slow or failed email must never block the
+// confirmation screen the traveler is already looking at.
+export async function confirmBooking({
   offer,
   passengers,
   seats,
   total,
-  reference,
   method,
   transactionId,
 }: {
@@ -22,34 +27,150 @@ export async function sendBookingEmails({
   passengers: Passenger[];
   seats: string[];
   total: number;
-  reference: string;
   method: string;
   transactionId: string;
+}): Promise<{ reference: string }> {
+  const fallbackReference = transactionId.slice(4, 10).toUpperCase();
+  const primary = passengers[0];
+  let reference = fallbackReference;
+
+  if (isSupabaseConfigured && primary?.email) {
+    try {
+      const supabase = createPublicClient();
+      const { data, error } = await supabase.rpc("create_booking", {
+        p_flight_id: offer.id,
+        p_guest_email: primary.email,
+        p_passengers: passengers.map((p, i) => ({ ...p, seat: seats[i] ?? "" })),
+        p_seats: seats,
+        p_cabin: offer.cabin,
+        p_total_amount: total,
+        p_method: method,
+        p_transaction_id: transactionId,
+      });
+      if (!error && data?.success) reference = data.reference;
+      // If persistence fails (e.g. offer.id isn't a real flights.id — happens
+      // when Supabase is configured but flights weren't seeded from a real
+      // UUID), fall back to the client-side reference rather than blocking
+      // the confirmation the traveler is already looking at.
+    } catch {
+      // same fallback
+    }
+  }
+
+  if (primary?.email) {
+    const confirmation = bookingConfirmationEmail({
+      passengerName: primary.name || "Traveler",
+      reference,
+      airline: offer.airline.name,
+      flightNumber: offer.flightNumber,
+      from: offer.from.code,
+      to: offer.to.code,
+      departTime: offer.departTime,
+      arriveTime: offer.arriveTime,
+      cabin: offer.cabin,
+      seats,
+      total,
+    });
+    await sendEmail({ to: primary.email, ...confirmation });
+
+    const receipt = paymentReceiptEmail({
+      reference,
+      method,
+      transactionId,
+      amount: total,
+      date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+    });
+    await sendEmail({ to: primary.email, ...receipt });
+  }
+
+  return { reference };
+}
+
+// Fired when a simulated card payment fails — emails a retry link that
+// lands back on this same booking with ?retry=wallet, which pre-selects
+// the wallet payment method (see PaymentStep's isRetry prop).
+export async function sendBookingFailedEmail({
+  flightId,
+  passengers,
+  total,
+}: {
+  flightId: string;
+  passengers: Passenger[];
+  total: number;
 }) {
   const primary = passengers[0];
   if (!primary?.email) return;
 
-  const confirmation = bookingConfirmationEmail({
-    passengerName: primary.name || "Traveler",
-    reference,
-    airline: offer.airline.name,
-    flightNumber: offer.flightNumber,
-    from: offer.from.code,
-    to: offer.to.code,
-    departTime: offer.departTime,
-    arriveTime: offer.arriveTime,
-    cabin: offer.cabin,
-    seats,
-    total,
-  });
-  await sendEmail({ to: primary.email, ...confirmation });
-
-  const receipt = paymentReceiptEmail({
-    reference,
-    method,
-    transactionId,
+  const copy = transactionFailedEmail({
+    type: "booking",
+    reference: `PENDING-${flightId.slice(0, 6).toUpperCase()}`,
     amount: total,
-    date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+    retryUrl: `${siteUrl}/booking/${flightId}?retry=wallet`,
   });
-  await sendEmail({ to: primary.email, ...receipt });
+  await sendEmail({ to: primary.email, ...copy });
+}
+
+export type BookingLookup =
+  | { ok: true; id: string; reference: string; flightId: string; total: number; status: string; createdAt: string; seats: string[]; cabin: string }
+  | { ok: false; message: string };
+
+export async function lookupBooking(reference: string, email: string): Promise<BookingLookup> {
+  if (!isSupabaseConfigured) {
+    return { ok: false, message: "Booking lookup needs Supabase configured — nothing is persisted in preview mode." };
+  }
+  try {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase.rpc("get_booking_by_reference", {
+      p_reference: reference,
+      p_email: email,
+    });
+    if (error || !data.success) {
+      return { ok: false, message: !error && "message" in data ? data.message : "Lookup failed." };
+    }
+    return {
+      ok: true,
+      id: data.id,
+      reference: data.reference,
+      flightId: data.flight_id,
+      total: data.total_amount,
+      status: data.status,
+      createdAt: data.created_at,
+      seats: data.seats,
+      cabin: data.cabin,
+    };
+  } catch {
+    return { ok: false, message: "Lookup failed." };
+  }
+}
+
+export async function requestBookingRefund(
+  reference: string,
+  email: string
+): Promise<{ ok: boolean; message: string }> {
+  if (!isSupabaseConfigured) {
+    return { ok: false, message: "Refunds need Supabase configured." };
+  }
+  try {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase.rpc("refund_booking", {
+      p_reference: reference,
+      p_email: email,
+    });
+    if (error) return { ok: false, message: error.message };
+    if (!data.success) return { ok: false, message: data.message };
+
+    const { bookingCancelledEmail } = await import("@/lib/email/templates");
+    const copy = bookingCancelledEmail({
+      passengerName: "Traveler",
+      reference: data.reference,
+      from: "",
+      to: "",
+      refundAmount: data.amount,
+    });
+    await sendEmail({ to: email, ...copy });
+
+    return { ok: true, message: "Refund issued — check your email for confirmation." };
+  } catch {
+    return { ok: false, message: "Refund failed." };
+  }
 }
