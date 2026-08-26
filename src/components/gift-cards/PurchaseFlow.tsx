@@ -13,6 +13,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { purchaseGiftCard } from "@/app/gift-cards/actions";
 import { submitPaymentRequest } from "@/app/payment-requests/actions";
 import type { PlatformSettingsRow } from "@/lib/supabase/types";
+import type { CryptoCoin } from "@/lib/data";
 
 const TIERS = [50, 100, 250, 500];
 
@@ -21,9 +22,11 @@ type Step = "amount" | "payment" | "reviewing" | "success";
 export const PurchaseFlow = ({
   isRetry = false,
   paymentMode,
+  cryptoAddresses,
 }: {
   isRetry?: boolean;
   paymentMode?: PlatformSettingsRow["payment_mode"];
+  cryptoAddresses: Record<CryptoCoin, string | null>;
 }) => {
   const [step, setStep] = useState<Step>("amount");
   const [reviewRequestId, setReviewRequestId] = useState<string | null>(null);
@@ -262,7 +265,11 @@ export const PurchaseFlow = ({
             </Button>
           </form>
         ) : (
-          <CryptoPayment amount={effectiveAmount} onConfirmed={handleCryptoConfirmed} />
+          <CryptoPayment
+            amount={effectiveAmount}
+            addresses={cryptoAddresses}
+            onConfirmed={handleCryptoConfirmed}
+          />
         )}
 
         <button

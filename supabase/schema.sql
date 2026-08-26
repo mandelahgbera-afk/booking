@@ -542,6 +542,30 @@ create index if not exists admin_logs_created_idx on public.admin_logs (created_
 -- entirely, at the cost of true instant push (a couple seconds instead of
 -- milliseconds) — a fine trade for this.
 -- ─────────────────────────────────────────────────────────────────────────
+-- ─────────────────────────────────────────────────────────────────────────
+-- crypto_addresses — admin-managed receiving addresses shown at checkout.
+-- Shared addresses for now (one per coin); per-buyer/per-session unique
+-- addresses are a future upgrade, not this table's job.
+-- ─────────────────────────────────────────────────────────────────────────
+create table if not exists public.crypto_addresses (
+  coin text primary key check (coin in ('usdt_bep20', 'eth', 'sol')),
+  address text not null,
+  updated_by text,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.crypto_addresses enable row level security;
+
+-- Public read — buyers (including guests) need this to render the QR/address
+-- at checkout. Writes are admin-only.
+drop policy if exists "crypto_addresses_public_read" on public.crypto_addresses;
+create policy "crypto_addresses_public_read" on public.crypto_addresses
+  for select using (true);
+
+drop policy if exists "crypto_addresses_admin_write" on public.crypto_addresses;
+create policy "crypto_addresses_admin_write" on public.crypto_addresses
+  for all using (public.is_admin()) with check (public.is_admin());
+
 create table if not exists public.payment_requests (
   id uuid primary key default gen_random_uuid(),
   type text not null check (type in ('booking', 'gift_card')),

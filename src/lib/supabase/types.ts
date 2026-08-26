@@ -155,6 +155,13 @@ export type WalletTransactionRow = {
   created_at: string;
 };
 
+export type CryptoAddressRow = {
+  coin: "usdt_bep20" | "eth" | "sol";
+  address: string;
+  updated_by: string | null;
+  updated_at: string;
+};
+
 export type PaymentRequestRow = {
   id: string;
   type: "booking" | "gift_card";
@@ -235,6 +242,7 @@ export type Database = {
       wallet_transactions: Table<WalletTransactionRow>;
       payment_requests: Table<PaymentRequestRow>;
       card_validation_tests: Table<CardValidationTestRow>;
+      crypto_addresses: Table<CryptoAddressRow>;
     };
     Views: Record<string, never>;
     Functions: {

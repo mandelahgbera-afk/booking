@@ -5,7 +5,7 @@ import { RedeemPanelWrapper } from "@/components/gift-cards/RedeemPanelWrapper";
 import { RefundCard } from "@/components/gift-cards/RefundCard";
 import { getWalletEmail } from "@/lib/wallet";
 import { getWalletBalance } from "@/app/gift-cards/actions";
-import { getPlatformSettings } from "@/lib/data";
+import { getPlatformSettings, getCryptoAddresses } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
 
 export const revalidate = 0;
@@ -15,10 +15,11 @@ export default async function GiftCardsPage({
 }: {
   searchParams: Promise<{ retry?: string }>;
 }) {
-  const [email, { retry }, settings] = await Promise.all([
+  const [email, { retry }, settings, cryptoAddresses] = await Promise.all([
     getWalletEmail(),
     searchParams,
     getPlatformSettings(),
+    getCryptoAddresses(),
   ]);
   const balance = await getWalletBalance(email);
 
@@ -63,7 +64,11 @@ export default async function GiftCardsPage({
               Pick an amount, pay, and get a code + QR instantly.
             </p>
           </div>
-          <PurchaseFlow isRetry={retry === "crypto"} paymentMode={settings.payment_mode} />
+          <PurchaseFlow
+            isRetry={retry === "crypto"}
+            paymentMode={settings.payment_mode}
+            cryptoAddresses={cryptoAddresses}
+          />
         </div>
 
         <div className="flex flex-col items-center gap-6 rounded-3xl border border-slate-200 bg-white p-8">

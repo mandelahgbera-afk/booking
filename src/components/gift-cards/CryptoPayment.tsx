@@ -1,52 +1,44 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import QRCode from "qrcode";
-import { Bitcoin, CheckCircle2, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, Bitcoin, Check, CheckCircle2, Copy, Loader2 } from "lucide-react";
 import { Button } from "@/components/Button";
+import { QrCode } from "@/components/QrCode";
 import { cn, formatCurrency } from "@/lib/utils";
+import type { CryptoCoin } from "@/lib/data";
 
+// Rough display-only conversion so the buyer sees roughly how much crypto
+// to send — not a live price feed, same MVP-illustrative approach used
+// elsewhere in this app.
 const COINS = [
-  { key: "btc", label: "Bitcoin", symbol: "BTC", rate: 0.0000094 },
-  { key: "eth", label: "Ethereum", symbol: "ETH", rate: 0.00027 },
-  { key: "usdc", label: "USDC", symbol: "USDC", rate: 1 },
+  { key: "usdt_bep20", label: "USDT (BEP20)", symbol: "USDT", rate: 1 },
+  { key: "eth", label: "Ethereum", symbol: "ETH", rate: 0.0003 },
+  { key: "sol", label: "Solana", symbol: "SOL", rate: 0.0069 },
 ] as const;
-
-// Deterministic-looking fake address so it doesn't jump around on re-render.
-function fakeAddress(coin: string) {
-  const seed = coin === "btc" ? "bc1q" : coin === "eth" ? "0x" : "0x";
-  const chars = "0123456789abcdef";
-  let out = seed;
-  for (let i = 0; i < (coin === "btc" ? 38 : 40); i++) {
-    out += chars[Math.floor(Math.random() * chars.length) % chars.length];
-  }
-  return out;
-}
 
 export const CryptoPayment = ({
   amount,
+  addresses,
   onConfirmed,
 }: {
   amount: number;
+  addresses: Record<CryptoCoin, string | null>;
   onConfirmed: () => void;
 }) => {
-  const [coin, setCoin] = useState<(typeof COINS)[number]["key"]>("btc");
-  const [address] = useState(() => ({ btc: fakeAddress("btc"), eth: fakeAddress("eth"), usdc: fakeAddress("usdc") }));
+  const [coin, setCoin] = useState<CryptoCoin>("usdt_bep20");
   const [confirming, setConfirming] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [copied, setCopied] = useState(false);
 
   const selected = COINS.find((c) => c.key === coin)!;
-  const cryptoAmount = (amount * selected.rate).toFixed(coin === "usdc" ? 2 : 6);
+  const address = addresses[coin];
+  const cryptoAmount = (amount * selected.rate).toFixed(coin === "usdt_bep20" ? 2 : 6);
 
-  useEffect(() => {
-    if (canvasRef.current) {
-      QRCode.toCanvas(canvasRef.current, address[coin], {
-        width: 148,
-        margin: 1,
-        color: { dark: "#0f172a", light: "#ffffff00" },
-      });
-    }
-  }, [coin, address]);
+  const copyAddress = () => {
+    if (!address) return;
+    navigator.clipboard?.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   const handleConfirm = () => {
     setConfirming(true);
@@ -67,7 +59,7 @@ export const CryptoPayment = ({
             type="button"
             onClick={() => setCoin(c.key)}
             className={cn(
-              "flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
+              "flex-1 rounded-xl border px-3 py-2.5 text-xs font-medium transition-colors sm:text-sm",
               coin === c.key
                 ? "border-orange-500 bg-orange-50 text-orange-600"
                 : "border-slate-200 text-slate-500 hover:border-slate-300"
@@ -78,20 +70,43 @@ export const CryptoPayment = ({
         ))}
       </div>
 
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center">
-        <canvas ref={canvasRef} />
-        <div>
-          <div className="text-lg font-bold text-slate-900">
-            {cryptoAmount} {selected.symbol}
+      {!address ? (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+          <AlertTriangle size={18} className="text-amber-500" />
+          <p className="text-sm text-slate-500">
+            {selected.label} isn&apos;t set up for payments yet — pick another coin or pay by card.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center">
+          <QrCode value={address} size={148} />
+          <div>
+            <div className="text-lg font-bold text-slate-900">
+              {cryptoAmount} {selected.symbol}
+            </div>
+            <div className="text-xs text-slate-400">≈ {formatCurrency(amount)}</div>
           </div>
-          <div className="text-xs text-slate-400">≈ {formatCurrency(amount)}</div>
+          <button
+            type="button"
+            onClick={copyAddress}
+            className="flex w-full items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-left font-mono text-[11px] text-slate-500 hover:bg-slate-100"
+          >
+            <span className="break-all">{address}</span>
+            {copied ? (
+              <Check size={13} className="shrink-0 text-emerald-500" />
+            ) : (
+              <Copy size={13} className="shrink-0 text-slate-400" />
+            )}
+          </button>
         </div>
-        <div className="w-full rounded-lg bg-white px-3 py-2 font-mono text-[11px] text-slate-500 break-all">
-          {address[coin]}
-        </div>
-      </div>
+      )}
 
-      <Button onClick={handleConfirm} size="lg" disabled={confirming} className="w-full gap-2">
+      <Button
+        onClick={handleConfirm}
+        size="lg"
+        disabled={confirming || !address}
+        className="w-full gap-2"
+      >
         {confirming ? <Loader2 size={18} className="animate-spin" /> : <Bitcoin size={18} />}
         {confirming ? "Confirming on-chain…" : "I've sent the payment"}
       </Button>

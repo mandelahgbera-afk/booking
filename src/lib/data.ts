@@ -431,6 +431,28 @@ export async function getAdminGiftCards(): Promise<AdminGiftCard[]> {
   }, mockAdminGiftCards);
 }
 
+export type CryptoCoin = "usdt_bep20" | "eth" | "sol";
+
+// Admin-managed receiving addresses shown at crypto checkout — public read
+// (guests need it too), writes are admin-only via the crypto_addresses RLS
+// policy. Returns null for any coin the admin hasn't set an address for yet.
+export async function getCryptoAddresses(): Promise<Record<CryptoCoin, string | null>> {
+  const empty: Record<CryptoCoin, string | null> = { usdt_bep20: null, eth: null, sol: null };
+  if (!isSupabaseConfigured) return empty;
+  try {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase.from("crypto_addresses").select("coin, address");
+    if (error || !data) return empty;
+    const out = { ...empty };
+    for (const row of data) {
+      if (row.coin in out) out[row.coin as CryptoCoin] = row.address;
+    }
+    return out;
+  } catch {
+    return empty;
+  }
+}
+
 // TEMPORARY — MVP card-validator QA log, see src/lib/card-test-log.ts.
 // No mock fallback: this is a dev-only tool, never shown to real users.
 export type AdminCardTest = {
