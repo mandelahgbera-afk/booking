@@ -19,7 +19,7 @@ export const IssueGiftCardForm = () => {
         e.preventDefault();
         startTransition(async () => {
           const res = await adminIssueGiftCard(Number(amount), email || undefined);
-          setFeedback(res.ok ? `Issued ${res.code}` : res.message);
+          setFeedback(res.ok ? `Issued ${res.code} — ${res.message}` : res.message);
           if (res.ok) {
             setEmail("");
             router.refresh();

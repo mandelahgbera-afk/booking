@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { logAdminAction } from "@/lib/data";
+import { sendEmail } from "@/lib/email/send";
+import { giftCardPurchasedEmail } from "@/lib/email/templates";
 
 function generateCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -42,7 +44,21 @@ export async function adminIssueGiftCard(
 
     await logAdminAction("gift_cards.issue", { code: data.code, amount });
     revalidatePath("/admin/gift-cards");
-    return { ok: true, code: data.code, message: "Gift card issued." };
+
+    let message = "Gift card issued.";
+    if (recipientEmail) {
+      const copy = giftCardPurchasedEmail({
+        code: data.code,
+        amount: Number(data.amount),
+        fromName: "the AirFly team",
+      });
+      const emailResult = await sendEmail({ to: recipientEmail, ...copy });
+      if (!emailResult.ok) {
+        message = `Gift card issued, but the email didn't send: ${emailResult.error ?? "unknown error"}`;
+      }
+    }
+
+    return { ok: true, code: data.code, message };
   } catch (err) {
     return {
       ok: false,
