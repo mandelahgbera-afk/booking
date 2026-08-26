@@ -584,7 +584,14 @@ create policy "profiles_update_own_or_admin" on public.profiles
 create or replace function public.prevent_self_role_escalation()
 returns trigger as $$
 begin
-  if new.role is distinct from old.role and not public.is_admin() then
+  -- auth.uid() is null for anything running outside a normal end-user API
+  -- request — the SQL editor, the Supabase CLI, a service-role connection,
+  -- a migration. That's already a fully-trusted context (only reachable by
+  -- the project owner or privileged server-side code), so it's exempt.
+  -- What this actually guards against is a signed-in, non-admin user
+  -- promoting themselves via the public API — that's the only case where
+  -- auth.uid() is both non-null and not an admin.
+  if new.role is distinct from old.role and auth.uid() is not null and not public.is_admin() then
     raise exception 'Only an admin can change a profile''s role.';
   end if;
   return new;
