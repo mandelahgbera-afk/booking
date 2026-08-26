@@ -86,14 +86,16 @@ create table if not exists public.bookings (
   constraint bookings_owner_present check (user_id is not null or guest_email is not null)
 );
 
+-- Idempotent — picks up the guest-checkout columns on a project that
+-- already ran an earlier version of this file. Must run BEFORE the indexes
+-- below, since create table above no-ops on an existing table and the
+-- column wouldn't exist yet otherwise.
+alter table public.bookings alter column user_id drop not null;
+alter table public.bookings add column if not exists guest_email text;
+
 create index if not exists bookings_user_idx on public.bookings (user_id);
 create index if not exists bookings_guest_email_idx on public.bookings (guest_email);
 create index if not exists bookings_reference_idx on public.bookings (reference);
-
--- Idempotent — picks up the guest-checkout columns on a project that
--- already ran an earlier version of this file.
-alter table public.bookings alter column user_id drop not null;
-alter table public.bookings add column if not exists guest_email text;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- payments  (simulated payment intents)
@@ -291,13 +293,14 @@ create table if not exists public.gift_cards (
   created_at timestamptz not null default now()
 );
 
+-- Idempotent — picks up buyer_email on a project that already ran an
+-- earlier version of this file. Must run BEFORE the indexes below, same
+-- reasoning as the bookings table above.
+alter table public.gift_cards add column if not exists buyer_email text;
+
 create index if not exists gift_cards_status_idx on public.gift_cards (status);
 create index if not exists gift_cards_redeemed_email_idx on public.gift_cards (redeemed_email);
 create index if not exists gift_cards_buyer_email_idx on public.gift_cards (buyer_email);
-
--- Idempotent — picks up buyer_email on a project that already ran an
--- earlier version of this file.
-alter table public.gift_cards add column if not exists buyer_email text;
 
 -- Generates a human-friendly code like AIRFLY-7K2M-9QRT.
 create or replace function public.generate_gift_card_code()
