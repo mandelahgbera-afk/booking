@@ -10,7 +10,13 @@ import type { FlightOffer, Airline } from "@/lib/mock-data";
 
 type SortKey = "price" | "duration" | "departure";
 
-export const FlightResults = ({ offers }: { offers: FlightOffer[] }) => {
+export const FlightResults = ({
+  offers,
+  resultNoun = "flights",
+}: {
+  offers: FlightOffer[];
+  resultNoun?: string;
+}) => {
   const airlines: Airline[] = useMemo(() => {
     const seen = new Map<string, Airline>();
     offers.forEach((o) => seen.set(o.airline.code, o.airline));
@@ -61,7 +67,7 @@ export const FlightResults = ({ offers }: { offers: FlightOffer[] }) => {
       <div className="mb-6 flex items-center justify-between">
         <p className="text-sm text-slate-500">
           <span className="font-semibold text-slate-900">{filtered.length}</span>{" "}
-          flights found
+          {resultNoun} found
         </p>
 
         <div className="flex items-center gap-3">
@@ -96,7 +102,7 @@ export const FlightResults = ({ offers }: { offers: FlightOffer[] }) => {
         <div className="flex flex-col gap-4">
           {filtered.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-slate-300 p-12 text-center text-sm text-slate-400">
-              No flights match your filters. Try widening your search.
+              No {resultNoun} match your filters. Try widening your search.
             </div>
           ) : (
             filtered.map((o) => <FlightCard key={o.id} offer={o} />)

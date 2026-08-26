@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PlaneTakeoff, Clock, Luggage } from "lucide-react";
+import { PlaneTakeoff, TrainFront, Bus, Clock, Luggage } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { FlightOffer } from "@/lib/mock-data";
 
@@ -9,7 +9,10 @@ function formatDuration(mins: number) {
   return `${h}h ${m}m`;
 }
 
+const MODE_ICON = { flight: PlaneTakeoff, train: TrainFront, bus: Bus } as const;
+
 export const FlightCard = ({ offer }: { offer: FlightOffer }) => {
+  const ModeIcon = MODE_ICON[offer.mode ?? "flight"];
   return (
     <div className="group flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-500/5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-4">
@@ -17,7 +20,7 @@ export const FlightCard = ({ offer }: { offer: FlightOffer }) => {
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white"
           style={{ backgroundColor: offer.airline.color }}
         >
-          <PlaneTakeoff size={18} />
+          <ModeIcon size={18} />
         </div>
 
         <div className="flex items-center gap-4 sm:gap-6">
@@ -31,7 +34,7 @@ export const FlightCard = ({ offer }: { offer: FlightOffer }) => {
               <Clock size={12} /> {formatDuration(offer.durationMins)}
             </span>
             <div className="relative my-1 h-px w-16 bg-slate-200 sm:w-24">
-              <PlaneTakeoff
+              <ModeIcon
                 size={12}
                 className="absolute -top-1.5 right-0 text-orange-400"
               />

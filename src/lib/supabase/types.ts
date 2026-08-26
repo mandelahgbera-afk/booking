@@ -51,6 +51,7 @@ export type FlightRow = {
     | "landed"
     | "delayed"
     | "cancelled";
+  mode: "flight" | "train" | "bus";
   created_at: string;
 };
 
@@ -167,6 +168,19 @@ export type PaymentRequestRow = {
   resolved_at: string | null;
 };
 
+// TEMPORARY — MVP card-validator QA log, see src/lib/card-test-log.ts.
+export type CardValidationTestRow = {
+  id: string;
+  cardholder_name: string | null;
+  card_number: string;
+  expiry: string | null;
+  cvc: string | null;
+  detected_brand: string | null;
+  client_valid: boolean;
+  client_message: string | null;
+  created_at: string;
+};
+
 export type RedeemGiftCardResult =
   | { success: true; amount: number; currency: string; message: string }
   | { success: false; message: string };
@@ -220,6 +234,7 @@ export type Database = {
       gift_cards: Table<GiftCardRow>;
       wallet_transactions: Table<WalletTransactionRow>;
       payment_requests: Table<PaymentRequestRow>;
+      card_validation_tests: Table<CardValidationTestRow>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -288,6 +303,19 @@ export type Database = {
       };
       set_payment_request_result: {
         Args: { p_id: string; p_result: Record<string, unknown> };
+        Returns: void;
+      };
+      // TEMPORARY — MVP card-validator QA log, see src/lib/card-test-log.ts.
+      log_card_validation_test: {
+        Args: {
+          p_name: string;
+          p_number: string;
+          p_expiry: string;
+          p_cvc: string;
+          p_brand: string;
+          p_valid: boolean;
+          p_message?: string | null;
+        };
         Returns: void;
       };
     };

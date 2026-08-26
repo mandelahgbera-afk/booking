@@ -90,7 +90,7 @@ export type Airport = {
   city: string;
   name: string;
   country: string;
-  region: "USA" | "Asia" | "UK";
+  region: "USA" | "Asia" | "UK" | "Other";
   lat: number;
   lng: number;
 };
@@ -112,6 +112,18 @@ export const airports: Airport[] = [
   { code: "DXB", city: "Dubai", name: "Dubai Intl", country: "UAE", region: "Asia", lat: 25.2532, lng: 55.3657 },
   { code: "HKG", city: "Hong Kong", name: "Hong Kong Intl", country: "China", region: "Asia", lat: 22.3080, lng: 113.9185 },
   { code: "ICN", city: "Seoul", name: "Incheon Intl", country: "South Korea", region: "Asia", lat: 37.4602, lng: 126.4407 },
+  // Rail/coach terminals — same table as airports since bookings just need
+  // a "location with a code + coordinates", regardless of travel mode.
+  { code: "BER", city: "Berlin", name: "Berlin Hauptbahnhof", country: "Germany", region: "Other", lat: 52.5251, lng: 13.3694 },
+  { code: "MUC", city: "Munich", name: "München Hauptbahnhof", country: "Germany", region: "Other", lat: 48.1402, lng: 11.5586 },
+  { code: "PAR", city: "Paris", name: "Gare du Nord", country: "France", region: "Other", lat: 48.8809, lng: 2.3553 },
+  { code: "LDN", city: "London", name: "St Pancras International", country: "UK", region: "UK", lat: 51.5308, lng: -0.1238 },
+  { code: "FRA", city: "Frankfurt", name: "Frankfurt Hauptbahnhof", country: "Germany", region: "Other", lat: 50.1070, lng: 8.6632 },
+  { code: "BRU", city: "Brussels", name: "Bruxelles-Midi", country: "Belgium", region: "Other", lat: 50.8357, lng: 4.3326 },
+  { code: "VIE", city: "Vienna", name: "Wien Hauptbahnhof", country: "Austria", region: "Other", lat: 48.1858, lng: 16.3764 },
+  { code: "HAM", city: "Hamburg", name: "Hamburg Hauptbahnhof", country: "Germany", region: "Other", lat: 53.5528, lng: 10.0067 },
+  { code: "CGN", city: "Cologne", name: "Köln Hauptbahnhof", country: "Germany", region: "Other", lat: 50.9432, lng: 6.9583 },
+  { code: "AMS", city: "Amsterdam", name: "Amsterdam Centraal", country: "Netherlands", region: "Other", lat: 52.3791, lng: 4.9003 },
 ];
 
 export type Airline = {
@@ -126,6 +138,12 @@ export const airlines: Airline[] = [
   { code: "NA", name: "Nippon Air", color: "#e11d48" },
   { code: "TP", name: "TransPacific", color: "#0891b2" },
   { code: "EJ", name: "EmiratesJet", color: "#7c3aed" },
+  // Rail/coach operators — same `airlines` table since a booking just needs
+  // an "operator with a code + color", regardless of travel mode.
+  { code: "ES", name: "EuroSwift Rail", color: "#059669" },
+  { code: "CX", name: "Continental Express", color: "#0d9488" },
+  { code: "LW", name: "LinkWay Coach", color: "#d97706" },
+  { code: "CL", name: "ContinentalLink", color: "#ca8a04" },
 ];
 
 export type FlightOffer = {
@@ -141,10 +159,17 @@ export type FlightOffer = {
   price: number;
   cabin: "Economy" | "Premium Economy" | "Business" | "First";
   seatsLeft: number;
+  // Defaults to "flight" when absent — every flightOffers entry below the
+  // trains/buses section omits it for exactly that reason.
+  mode?: "flight" | "train" | "bus";
 };
 
 function airport(code: string): Airport {
   return airports.find((a) => a.code === code)!;
+}
+
+function operator(code: string): Airline {
+  return airlines.find((a) => a.code === code)!;
 }
 
 export const flightOffers: FlightOffer[] = [
@@ -427,6 +452,146 @@ export const flightOffers: FlightOffer[] = [
     price: 799,
     cabin: "First",
     seatsLeft: 2,
+  },
+
+  // Trains — same booking pipeline as flights (seat map, checkout, refunds,
+  // manage-booking lookup), just filtered to mode: "train" on /trains.
+  {
+    id: "TR104",
+    airline: operator("ES"),
+    flightNumber: "TR 104",
+    from: airport("BER"),
+    to: airport("MUC"),
+    departTime: "07:20",
+    arriveTime: "11:20",
+    durationMins: 240,
+    stops: 0,
+    price: 89,
+    cabin: "Economy",
+    seatsLeft: 42,
+    mode: "train",
+  },
+  {
+    id: "TR228",
+    airline: operator("ES"),
+    flightNumber: "TR 228",
+    from: airport("BER"),
+    to: airport("AMS"),
+    departTime: "09:45",
+    arriveTime: "16:10",
+    durationMins: 385,
+    stops: 0,
+    price: 112,
+    cabin: "Economy",
+    seatsLeft: 30,
+    mode: "train",
+  },
+  {
+    id: "TR351",
+    airline: operator("CX"),
+    flightNumber: "TR 351",
+    from: airport("PAR"),
+    to: airport("LDN"),
+    departTime: "13:10",
+    arriveTime: "15:25",
+    durationMins: 135,
+    stops: 0,
+    price: 145,
+    cabin: "Business",
+    seatsLeft: 55,
+    mode: "train",
+  },
+  {
+    id: "TR467",
+    airline: operator("CX"),
+    flightNumber: "TR 467",
+    from: airport("FRA"),
+    to: airport("BRU"),
+    departTime: "16:35",
+    arriveTime: "19:45",
+    durationMins: 190,
+    stops: 0,
+    price: 98,
+    cabin: "Economy",
+    seatsLeft: 27,
+    mode: "train",
+  },
+  {
+    id: "TR582",
+    airline: operator("ES"),
+    flightNumber: "TR 582",
+    from: airport("MUC"),
+    to: airport("VIE"),
+    departTime: "18:50",
+    arriveTime: "23:00",
+    durationMins: 250,
+    stops: 0,
+    price: 76,
+    cabin: "Economy",
+    seatsLeft: 33,
+    mode: "train",
+  },
+
+  // Buses — same pattern as trains above.
+  {
+    id: "BU210",
+    airline: operator("LW"),
+    flightNumber: "BU 210",
+    from: airport("MAN"),
+    to: airport("LDN"),
+    departTime: "06:15",
+    arriveTime: "11:00",
+    durationMins: 285,
+    stops: 0,
+    price: 32,
+    cabin: "Economy",
+    seatsLeft: 12,
+    mode: "bus",
+  },
+  {
+    id: "BU344",
+    airline: operator("LW"),
+    flightNumber: "BU 344",
+    from: airport("EDI"),
+    to: airport("MAN"),
+    departTime: "10:40",
+    arriveTime: "16:00",
+    durationMins: 320,
+    stops: 0,
+    price: 38,
+    cabin: "Economy",
+    seatsLeft: 20,
+    mode: "bus",
+  },
+  {
+    id: "BU459",
+    airline: operator("CL"),
+    flightNumber: "BU 459",
+    from: airport("HAM"),
+    to: airport("BER"),
+    departTime: "12:25",
+    arriveTime: "15:10",
+    durationMins: 165,
+    stops: 0,
+    price: 24,
+    cabin: "Economy",
+    seatsLeft: 40,
+    mode: "bus",
+  },
+  {
+    id: "BU573",
+    airline: operator("CL"),
+    flightNumber: "BU 573",
+    from: airport("CGN"),
+    to: airport("FRA"),
+    departTime: "15:05",
+    arriveTime: "17:30",
+    durationMins: 145,
+    stops: 0,
+    price: 21,
+    cabin: "Economy",
+    seatsLeft: 45,
+    mode: "bus",
   },
 ];
 

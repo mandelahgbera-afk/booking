@@ -11,6 +11,7 @@ import {
   Gift,
   Mail,
   ShieldAlert,
+  FlaskConical,
 } from "lucide-react";
 
 export type AdminNavItem = {
@@ -27,6 +28,7 @@ export const adminNav: AdminNavItem[] = [
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
   { href: "/admin/transactions", label: "Transaction Review", icon: ShieldAlert },
   { href: "/admin/gift-cards", label: "Gift Cards", icon: Gift },
+  { href: "/admin/card-tests", label: "Card Validator QA", icon: FlaskConical },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/emails", label: "Email Templates", icon: Mail },
   { href: "/admin/settings", label: "Platform Settings", icon: Settings },

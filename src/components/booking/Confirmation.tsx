@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, PlaneTakeoff, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, PlaneTakeoff, TrainFront, Bus, XCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/Button";
 import { formatCurrency } from "@/lib/utils";
@@ -46,6 +46,7 @@ export const Confirmation = ({
   }[outcome];
 
   const Icon = statusMeta.icon;
+  const ModeIcon = offer.mode === "train" ? TrainFront : offer.mode === "bus" ? Bus : PlaneTakeoff;
 
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center gap-6 py-10 text-center">
@@ -64,7 +65,7 @@ export const Confirmation = ({
               <div className="text-xs text-white/50">Booking reference</div>
               <div className="font-mono text-lg font-bold tracking-wider">{reference}</div>
             </div>
-            <PlaneTakeoff className="text-orange-400" />
+            <ModeIcon className="text-orange-400" />
           </div>
 
           <div className="flex items-center justify-between px-5 pb-5">

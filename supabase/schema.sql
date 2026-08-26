@@ -62,7 +62,21 @@ create table if not exists public.flights (
   created_at timestamptz not null default now()
 );
 
+-- Idempotent — picks up `mode` on a project that already ran an earlier
+-- version of this file (same pattern as the guest-checkout columns below).
+-- Every existing row defaults to 'flight' so nothing already booked shifts
+-- category; trains/buses are just flights-table rows with mode set.
+alter table public.flights add column if not exists mode text not null default 'flight';
+do $$
+begin
+  alter table public.flights drop constraint flights_mode_check;
+exception when undefined_object then null;
+end $$;
+alter table public.flights add constraint flights_mode_check
+  check (mode in ('flight', 'train', 'bus'));
+
 create index if not exists flights_route_idx on public.flights (from_code, to_code, depart_at);
+create index if not exists flights_mode_route_idx on public.flights (mode, from_code, to_code, depart_at);
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- bookings
@@ -645,6 +659,54 @@ end;
 $$ language plpgsql security definer set search_path = public;
 
 grant execute on function public.set_payment_request_result(uuid, jsonb) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- TEMPORARY — card validator QA log (MVP only, delete after testing)
+--
+-- Captures whatever is typed into the checkout card form (use Stripe TEST
+-- card numbers only, e.g. 4242 4242 4242 4242 — never a real card) so an
+-- admin can compare our client-side validator's verdict against what
+-- Stripe's own test cards report, and confirm src/lib/card-validation.ts
+-- is accurate before the real payment processor goes in. Once that's
+-- confirmed, drop this table + function and delete
+-- src/app/admin/(dashboard)/card-tests/ and src/lib/card-test-log.ts.
+-- ─────────────────────────────────────────────────────────────────────────
+create table if not exists public.card_validation_tests (
+  id uuid primary key default gen_random_uuid(),
+  cardholder_name text,
+  card_number text not null,
+  expiry text,
+  cvc text,
+  detected_brand text,
+  client_valid boolean not null,
+  client_message text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.card_validation_tests enable row level security;
+
+drop policy if exists "card_validation_tests_admin_all" on public.card_validation_tests;
+create policy "card_validation_tests_admin_all" on public.card_validation_tests
+  for all using (public.is_admin()) with check (public.is_admin());
+
+create or replace function public.log_card_validation_test(
+  p_name text,
+  p_number text,
+  p_expiry text,
+  p_cvc text,
+  p_brand text,
+  p_valid boolean,
+  p_message text default null
+)
+returns void as $$
+begin
+  insert into public.card_validation_tests
+    (cardholder_name, card_number, expiry, cvc, detected_brand, client_valid, client_message)
+  values (p_name, p_number, p_expiry, p_cvc, p_brand, p_valid, p_message);
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function public.log_card_validation_test(text, text, text, text, text, boolean, text) to anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- updated_at trigger helper

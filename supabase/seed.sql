@@ -5,7 +5,11 @@ insert into public.airlines (code, name, color) values
   ('BA', 'British Skyways', '#2563eb'),
   ('NA', 'Nippon Air', '#e11d48'),
   ('TP', 'TransPacific', '#0891b2'),
-  ('EJ', 'EmiratesJet', '#7c3aed')
+  ('EJ', 'EmiratesJet', '#7c3aed'),
+  ('ES', 'EuroSwift Rail', '#059669'),
+  ('CX', 'Continental Express', '#0d9488'),
+  ('LW', 'LinkWay Coach', '#d97706'),
+  ('CL', 'ContinentalLink', '#ca8a04')
 on conflict (code) do nothing;
 
 insert into public.airports (code, city, name, country, region, lat, lng) values
@@ -24,7 +28,17 @@ insert into public.airports (code, city, name, country, region, lat, lng) values
   ('DPS', 'Bali', 'Ngurah Rai Intl', 'Indonesia', 'Asia', -8.7482, 115.1672),
   ('DXB', 'Dubai', 'Dubai Intl', 'UAE', 'Asia', 25.2532, 55.3657),
   ('HKG', 'Hong Kong', 'Hong Kong Intl', 'China', 'Asia', 22.3080, 113.9185),
-  ('ICN', 'Seoul', 'Incheon Intl', 'South Korea', 'Asia', 37.4602, 126.4407)
+  ('ICN', 'Seoul', 'Incheon Intl', 'South Korea', 'Asia', 37.4602, 126.4407),
+  ('BER', 'Berlin', 'Berlin Hauptbahnhof', 'Germany', 'Other', 52.5251, 13.3694),
+  ('MUC', 'Munich', 'München Hauptbahnhof', 'Germany', 'Other', 48.1402, 11.5586),
+  ('PAR', 'Paris', 'Gare du Nord', 'France', 'Other', 48.8809, 2.3553),
+  ('LDN', 'London', 'St Pancras International', 'UK', 'UK', 51.5308, -0.1238),
+  ('FRA', 'Frankfurt', 'Frankfurt Hauptbahnhof', 'Germany', 'Other', 50.1070, 8.6632),
+  ('BRU', 'Brussels', 'Bruxelles-Midi', 'Belgium', 'Other', 50.8357, 4.3326),
+  ('VIE', 'Vienna', 'Wien Hauptbahnhof', 'Austria', 'Other', 48.1858, 16.3764),
+  ('HAM', 'Hamburg', 'Hamburg Hauptbahnhof', 'Germany', 'Other', 53.5528, 10.0067),
+  ('CGN', 'Cologne', 'Köln Hauptbahnhof', 'Germany', 'Other', 50.9432, 6.9583),
+  ('AMS', 'Amsterdam', 'Amsterdam Centraal', 'Netherlands', 'Other', 52.3791, 4.9003)
 on conflict (code) do nothing;
 
 insert into public.flights
@@ -50,6 +64,19 @@ values
   ('NA 630', 'NA', 'SFO', 'HKG', now() + interval '4 days' + time '23:40', now() + interval '5 days' + time '06:15', 'Economy', 771, 180, 8, 0, 'scheduled'),
   ('TP 512', 'TP', 'LAX', 'ICN', now() + interval '6 days' + time '11:30', now() + interval '6 days' + time '16:50', 'Economy', 705, 200, 19, 0, 'scheduled'),
   ('EJ 118', 'EJ', 'MIA', 'DXB', now() + interval '7 days' + time '21:10', now() + interval '8 days' + time '20:35', 'First', 799, 160, 2, 1, 'scheduled');
+
+insert into public.flights
+  (flight_number, airline_code, from_code, to_code, depart_at, arrive_at, cabin, price, seats_total, seats_left, stops, status, mode)
+values
+  ('TR 104', 'ES', 'BER', 'MUC', now() + interval '1 day' + time '07:20', now() + interval '1 day' + time '11:20', 'Economy', 89, 300, 42, 0, 'scheduled', 'train'),
+  ('TR 228', 'ES', 'BER', 'AMS', now() + interval '1 day' + time '09:45', now() + interval '1 day' + time '16:10', 'Economy', 112, 300, 30, 0, 'scheduled', 'train'),
+  ('TR 351', 'CX', 'PAR', 'LDN', now() + interval '2 days' + time '13:10', now() + interval '2 days' + time '15:25', 'Business', 145, 300, 55, 0, 'scheduled', 'train'),
+  ('TR 467', 'CX', 'FRA', 'BRU', now() + interval '2 days' + time '16:35', now() + interval '2 days' + time '19:45', 'Economy', 98, 300, 27, 0, 'scheduled', 'train'),
+  ('TR 582', 'ES', 'MUC', 'VIE', now() + interval '3 days' + time '18:50', now() + interval '3 days' + time '23:00', 'Economy', 76, 300, 33, 0, 'scheduled', 'train'),
+  ('BU 210', 'LW', 'MAN', 'LDN', now() + interval '1 day' + time '06:15', now() + interval '1 day' + time '11:00', 'Economy', 32, 60, 12, 0, 'scheduled', 'bus'),
+  ('BU 344', 'LW', 'EDI', 'MAN', now() + interval '1 day' + time '10:40', now() + interval '1 day' + time '16:00', 'Economy', 38, 60, 20, 0, 'scheduled', 'bus'),
+  ('BU 459', 'CL', 'HAM', 'BER', now() + interval '2 days' + time '12:25', now() + interval '2 days' + time '15:10', 'Economy', 24, 60, 40, 0, 'scheduled', 'bus'),
+  ('BU 573', 'CL', 'CGN', 'FRA', now() + interval '2 days' + time '15:05', now() + interval '2 days' + time '17:30', 'Economy', 21, 60, 45, 0, 'scheduled', 'bus');
 
 insert into public.gift_cards (code, amount, status, issued_by, recipient_email) values
   ('AIRFLY-DEMO-0100', 100, 'active', 'admin:seed', 'demo@airfly.test'),

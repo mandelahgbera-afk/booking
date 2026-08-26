@@ -17,7 +17,6 @@ const COLUMNS = [
       { label: "Flights", href: "/flights" },
       { label: "Trains", href: "/trains" },
       { label: "Buses", href: "/buses" },
-      { label: "Hotels", href: "/hotels" },
     ],
   },
   {

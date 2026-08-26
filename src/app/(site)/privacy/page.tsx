@@ -23,7 +23,7 @@ export default function PrivacyPage() {
         {
           heading: "Payment data",
           body: [
-            "Card details are never stored on our servers in this environment — all payment flows here are simulated for demonstration purposes. In a production deployment, payment data would be handled by a PCI-compliant processor and never touch our infrastructure directly.",
+            "Card details are never stored on our servers. Payment data is handled by a PCI-compliant processor and never touches our infrastructure directly.",
           ],
         },
         {

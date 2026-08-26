@@ -14,6 +14,8 @@ const MODES = [
   { key: "buses", label: "Buses", icon: Bus, href: "/buses" },
 ] as const;
 
+type ModeKey = (typeof MODES)[number]["key"];
+
 const TABS = [
   { key: "oneway", label: "One Way" },
   { key: "roundtrip", label: "Round Trip" },
@@ -23,9 +25,11 @@ const TABS = [
 type TabKey = (typeof TABS)[number]["key"];
 
 export const SearchWidget = ({
+  mode = "flights",
   defaultFrom = "JFK",
   defaultTo = "LHR",
 }: {
+  mode?: ModeKey;
   defaultFrom?: string;
   defaultTo?: string;
 }) => {
@@ -50,14 +54,16 @@ export const SearchWidget = ({
       pax: travelers,
     });
     if (tab === "roundtrip") params.set("return", returnDate);
-    router.push(`/flights?${params.toString()}`);
+    router.push(`/${mode}?${params.toString()}`);
   };
+
+  const modeNoun = MODES.find((m) => m.key === mode)?.label ?? "Flights";
 
   return (
     <div className="mx-auto w-full max-w-4xl glass-card rounded-3xl p-3 sm:p-4">
       <div className="mb-1 flex flex-wrap items-center gap-1 border-b border-slate-200/70 px-2 pb-3">
         {MODES.map((m) => {
-          const active = m.key === "flights";
+          const active = m.key === mode;
           return (
             <Link
               key={m.key}
@@ -153,7 +159,7 @@ export const SearchWidget = ({
       <div className="flex justify-end px-2 pt-3">
         <Button size="lg" className="w-full gap-2 sm:w-auto" onClick={search}>
           <Search size={18} />
-          Search Flights
+          Search {modeNoun}
         </Button>
       </div>
     </div>

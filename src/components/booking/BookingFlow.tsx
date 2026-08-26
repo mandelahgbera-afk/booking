@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, PlaneTakeoff } from "lucide-react";
+import { Check, PlaneTakeoff, TrainFront, Bus } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { FlightOffer } from "@/lib/mock-data";
 import type { PlatformSettingsRow } from "@/lib/supabase/types";
@@ -42,6 +42,8 @@ export const BookingFlow = ({
     (step === 0 && passengers.every((p) => p.name && p.email)) ||
     (step === 1 && seats.length === passengers.length) ||
     step === 2;
+
+  const ModeIcon = offer.mode === "train" ? TrainFront : offer.mode === "bus" ? Bus : PlaneTakeoff;
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
@@ -175,7 +177,7 @@ export const BookingFlow = ({
               className="flex h-10 w-10 items-center justify-center rounded-xl text-white"
               style={{ backgroundColor: offer.airline.color }}
             >
-              <PlaneTakeoff size={18} />
+              <ModeIcon size={18} />
             </div>
             <div>
               <div className="text-sm font-semibold text-slate-900">
@@ -190,7 +192,7 @@ export const BookingFlow = ({
               <div className="text-lg font-bold text-slate-900">{offer.from.code}</div>
               <div className="text-xs text-slate-400">{offer.departTime}</div>
             </div>
-            <PlaneTakeoff size={14} className="text-slate-300" />
+            <ModeIcon size={14} className="text-slate-300" />
             <div className="text-right">
               <div className="text-lg font-bold text-slate-900">{offer.to.code}</div>
               <div className="text-xs text-slate-400">{offer.arriveTime}</div>

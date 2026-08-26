@@ -5,9 +5,10 @@ const siteUrl = process.env.NEXT_SITE_URL || "http://localhost:3000";
 const routes = [
   "",
   "/flights",
+  "/trains",
+  "/buses",
   "/destinations",
   "/reviews",
-  "/hotels",
   "/gift-cards",
   "/about",
   "/contact",

