@@ -12,6 +12,15 @@ const COLUMNS = [
     ],
   },
   {
+    title: "Travel modes",
+    links: [
+      { label: "Flights", href: "/flights" },
+      { label: "Trains", href: "/trains" },
+      { label: "Buses", href: "/buses" },
+      { label: "Hotels", href: "/hotels" },
+    ],
+  },
+  {
     title: "Support",
     links: [
       { label: "Help center", href: "/contact" },
@@ -34,7 +43,7 @@ export const Footer = () => {
   return (
     <footer className="border-t border-slate-200 bg-white">
       <div className="mx-auto max-w-6xl px-6 py-16">
-        <div className="grid grid-cols-2 gap-10 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-10 sm:grid-cols-6">
           <div className="col-span-2">
             <div className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-primary text-white">

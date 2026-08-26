@@ -2,10 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftRight, Calendar, MapPin, Search, Users } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeftRight, Bus, Calendar, MapPin, PlaneTakeoff, Search, TrainFront, Users } from "lucide-react";
 import { Button } from "@/components/Button";
 import { AirportPicker } from "./AirportPicker";
 import { cn } from "@/lib/utils";
+
+const MODES = [
+  { key: "flights", label: "Flights", icon: PlaneTakeoff, href: "/flights" },
+  { key: "trains", label: "Trains", icon: TrainFront, href: "/trains" },
+  { key: "buses", label: "Buses", icon: Bus, href: "/buses" },
+] as const;
 
 const TABS = [
   { key: "oneway", label: "One Way" },
@@ -48,6 +55,25 @@ export const SearchWidget = ({
 
   return (
     <div className="mx-auto w-full max-w-4xl glass-card rounded-3xl p-3 sm:p-4">
+      <div className="mb-1 flex flex-wrap items-center gap-1 border-b border-slate-200/70 px-2 pb-3">
+        {MODES.map((m) => {
+          const active = m.key === "flights";
+          return (
+            <Link
+              key={m.key}
+              href={m.href}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors",
+                active ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100"
+              )}
+            >
+              <m.icon size={14} />
+              {m.label}
+            </Link>
+          );
+        })}
+      </div>
+
       <div className="flex flex-wrap items-center gap-2 px-2 pb-3 pt-1">
         {TABS.map((t) => (
           <button

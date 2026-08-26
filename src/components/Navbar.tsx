@@ -28,11 +28,11 @@ export const Navbar = ({
 
       <nav className="hidden md:flex items-center gap-8 pointer-events-auto glass-card px-8 py-3 rounded-full">
         <Link href="/flights" className="text-sm font-medium text-slate-600 hover:text-orange-500 transition-colors">Flights</Link>
-        <Link href="/hotels" className="text-sm font-medium text-slate-600 hover:text-orange-500 transition-colors">Hotels</Link>
+        <Link href="/trains" className="text-sm font-medium text-slate-600 hover:text-orange-500 transition-colors">Trains</Link>
+        <Link href="/buses" className="text-sm font-medium text-slate-600 hover:text-orange-500 transition-colors">Buses</Link>
         <Link href="/destinations" className="text-sm font-medium text-slate-600 hover:text-orange-500 transition-colors">Destinations</Link>
         <Link href="/gift-cards" className="text-sm font-medium text-slate-600 hover:text-orange-500 transition-colors">Gift Cards</Link>
         <Link href="/partners" className="text-sm font-medium text-slate-600 hover:text-orange-500 transition-colors">Partners</Link>
-        <Link href="/reviews" className="text-sm font-medium text-slate-600 hover:text-orange-500 transition-colors">Reviews</Link>
       </nav>
 
       <div className="flex items-center gap-4 pointer-events-auto">
