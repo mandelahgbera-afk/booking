@@ -19,6 +19,10 @@ export const TransactionQueue = ({ initialRequests }: { initialRequests: Pending
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<string | null>(null);
+  // Failures also get promoted here — a big, impossible-to-miss banner at
+  // the very top of the list, not just a small box under one row that's
+  // easy to scroll past or miss on a long queue.
+  const [topError, setTopError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -40,6 +44,7 @@ export const TransactionQueue = ({ initialRequests }: { initialRequests: Pending
   ) => {
     setBusyId(id);
     setErrors((prev) => ({ ...prev, [id]: "" }));
+    setTopError(null);
     startTransition(async () => {
       try {
         const res = await resolvePaymentRequestAction(id, decision, alt);
@@ -47,17 +52,18 @@ export const TransactionQueue = ({ initialRequests }: { initialRequests: Pending
           setRequests((prev) => prev.filter((r) => r.id !== id));
           if (res.message) setNotice(res.message);
         } else {
-          setErrors((prev) => ({ ...prev, [id]: res.message || "That didn't go through — try again." }));
+          const msg = res.message || "That didn't go through — try again.";
+          setErrors((prev) => ({ ...prev, [id]: msg }));
+          setTopError(msg);
         }
       } catch (err) {
         // Belt-and-suspenders — resolvePaymentRequestAction shouldn't throw,
         // but if the server action call itself fails (network blip, etc.)
         // this keeps the admin from staring at a button stuck "loading"
         // forever with no explanation.
-        setErrors((prev) => ({
-          ...prev,
-          [id]: err instanceof Error ? err.message : "That didn't go through — try again.",
-        }));
+        const msg = err instanceof Error ? err.message : "That didn't go through — try again.";
+        setErrors((prev) => ({ ...prev, [id]: msg }));
+        setTopError(msg);
       }
       setBusyId(null);
     });
@@ -74,6 +80,17 @@ export const TransactionQueue = ({ initialRequests }: { initialRequests: Pending
 
   return (
     <div className="flex flex-col gap-3">
+      {topError && (
+        <div className="flex items-start justify-between gap-3 rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          <span className="flex items-start gap-2">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+            {topError}
+          </span>
+          <button onClick={() => setTopError(null)} className="shrink-0 font-semibold hover:underline">
+            Dismiss
+          </button>
+        </div>
+      )}
       {notice && (
         <div className="flex items-start justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-800">
           <span className="flex items-start gap-2">

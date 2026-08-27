@@ -38,14 +38,22 @@ export async function resolvePaymentRequestAction(
   alt?: "wallet" | "crypto" | "card"
 ): Promise<{ ok: boolean; message?: string }> {
   const supabase = await createClient(); // admin-authenticated, cookie-bound
+  console.log(`[transactions] resolve id=${id} decision=${decision} alt=${alt ?? "none"}`);
 
   const { data, error } = await supabase.rpc("resolve_payment_request", {
     p_id: id,
     p_decision: decision,
     p_alt: alt ?? null,
   });
-  if (error) return { ok: false, message: error.message };
-  if (!data.success) return { ok: false, message: data.message };
+  if (error) {
+    console.error(`[transactions] resolve_payment_request RPC error for ${id}:`, error);
+    return { ok: false, message: error.message };
+  }
+  if (!data.success) {
+    console.warn(`[transactions] resolve_payment_request rejected for ${id}: ${data.message}`);
+    return { ok: false, message: data.message };
+  }
+  console.log(`[transactions] ${id} resolved — type=${data.type} email=${data.email} metadata.method=${(data.metadata as Record<string, unknown> | null)?.method ?? "n/a"}`);
 
   const { type, email, amount, metadata } = data;
   let emailWarning: string | undefined;
@@ -142,10 +150,13 @@ export async function resolvePaymentRequestAction(
       retryUrl,
       retryMethod: type === "booking" ? "wallet" : giftRetryMethod,
     });
+    console.log(`[transactions] ${id} sending decline notification to ${email}, retryMethod=${giftRetryMethod}`);
     const emailResult = await sendEmail({ to: email, ...copy });
+    console.log(`[transactions] ${id} decline email result:`, emailResult);
     if (!emailResult.ok) emailWarning = `Declined, but the email didn't send: ${emailResult.error ?? "unknown error"}`;
   }
   } catch (err) {
+    console.error(`[transactions] ${id} threw after decision was saved:`, err);
     return {
       ok: true,
       message: `Decision saved, but something went wrong after: ${err instanceof Error ? err.message : "unknown error"}`,
