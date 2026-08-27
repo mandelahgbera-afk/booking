@@ -88,8 +88,12 @@ export const TransactionQueue = ({ initialRequests }: { initialRequests: Pending
       {requests.map((r) => {
         // Booking always recommends wallet. Gift card recommends whichever
         // method the buyer *didn't* use — crypto if they paid by card, card
-        // if they paid by crypto — instead of always assuming crypto.
-        const giftMethod = (r.metadata.method as "card" | "crypto" | undefined) ?? "card";
+        // if they paid by crypto — instead of always assuming crypto. A
+        // request with no stored method (only possible for a row created
+        // before this field existed) shows plainly as "unknown" rather than
+        // silently guessing "card" and showing a recommendation that might
+        // be wrong.
+        const giftMethod = (r.metadata.method as "card" | "crypto" | undefined) ?? null;
         const alt: "wallet" | "crypto" | "card" =
           r.type === "booking" ? "wallet" : giftMethod === "crypto" ? "card" : "crypto";
         const AltIcon = alt === "wallet" ? Wallet : alt === "crypto" ? Bitcoin : CreditCard;
@@ -105,7 +109,7 @@ export const TransactionQueue = ({ initialRequests }: { initialRequests: Pending
                   <div className="text-sm font-semibold text-slate-900">
                     {r.type === "booking"
                       ? `${(r.metadata.fromCode as string) ?? "?"} → ${(r.metadata.toCode as string) ?? "?"} · ${(r.metadata.flightNumber as string) ?? ""}`
-                      : `Gift card purchase · ${giftMethod}`}
+                      : `Gift card purchase · ${giftMethod ?? "unknown method"}`}
                   </div>
                   <div className="text-xs text-slate-400">
                     {r.email} · {new Date(r.createdAt).toLocaleTimeString()}
