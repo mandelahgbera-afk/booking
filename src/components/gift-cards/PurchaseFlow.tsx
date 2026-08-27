@@ -172,7 +172,10 @@ export const PurchaseFlow = ({
               setMethod(alt);
               setError(`Your payment was declined. Try ${alt} instead below.`);
             } else {
-              setError("Your payment was declined.");
+              // No alt recommendation — this was a plain "retry the same
+              // way" decline, not a "switch methods" one. Leave the
+              // currently selected method as-is instead of guessing.
+              setError("Your payment was declined. Please try again below.");
             }
           }}
         />

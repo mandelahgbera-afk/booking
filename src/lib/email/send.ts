@@ -29,7 +29,9 @@ export async function sendEmail({
   subject: string;
   html: string;
 }): Promise<{ ok: boolean; error?: string }> {
+  console.log(`[email] sendEmail called: "${subject}" to ${to}`);
   const settings = await getPlatformSettings();
+  console.log(`[email] email_notifications_enabled=${settings.email_notifications_enabled} isEmailConfigured=${isEmailConfigured} from=${FROM_ADDRESS}`);
   if (!settings.email_notifications_enabled) {
     console.warn(`[email] Disabled in Platform Settings — skipped "${subject}" to ${to}`);
     return { ok: false, error: "Email notifications are turned off in Platform Settings." };
@@ -41,7 +43,7 @@ export async function sendEmail({
   }
 
   try {
-    const { error } = await getClient().emails.send({
+    const { data, error } = await getClient().emails.send({
       from: FROM_ADDRESS,
       to,
       subject,
@@ -51,6 +53,7 @@ export async function sendEmail({
       console.error(`[email] Resend rejected "${subject}" to ${to}:`, error);
       return { ok: false, error: error.message };
     }
+    console.log(`[email] Resend accepted "${subject}" to ${to} — id=${data?.id}`);
     return { ok: true };
   } catch (err) {
     console.error(`[email] Failed to send "${subject}" to ${to}:`, err);

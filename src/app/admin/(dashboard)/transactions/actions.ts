@@ -137,24 +137,36 @@ export async function resolvePaymentRequestAction(
     } else {
       // declined or declined_alt — same retry-email pattern as the automatic
       // "simulate fail" path, just triggered by an admin decision instead.
-      // For a gift card, retry defaults to the opposite of whichever method
-      // was actually used (not always crypto) unless the admin's own `alt`
-      // choice says otherwise.
+      // Plain "Decline" = try again the same way (a card declining once
+      // doesn't mean the card is bad). "Decline + recommend X" = switch
+      // methods entirely, to whatever the admin picked. Applies the same
+      // way to both booking and gift card — booking's only used method is
+      // ever card/apple/google pay (wallet is a guaranteed-success retry
+      // path that never goes through manual review to begin with), so its
+      // "used" bucket is always "card"; a gift card's used bucket is
+      // whichever of card/crypto its metadata recorded.
+      const bookingMetadata = metadata as unknown as BookingRequestMetadata;
       const giftMetadata = metadata as unknown as GiftCardRequestMetadata;
-      const giftRetryMethod = alt === "card" || alt === "crypto" ? alt : giftMetadata.method === "crypto" ? "card" : "crypto";
+      const usedBucket: "wallet" | "crypto" | "card" =
+        type === "booking" ? "card" : giftMetadata.method === "crypto" ? "crypto" : "card";
+      const isSwitch = decision === "declined_alt" && Boolean(alt);
+      const retryMethod: "wallet" | "crypto" | "card" = isSwitch ? (alt as "wallet" | "crypto" | "card") : usedBucket;
+      const sameMethod = !isSwitch;
+
       const retryUrl =
         type === "booking"
-          ? `${siteUrl}/booking/${(metadata as unknown as BookingRequestMetadata).flightId}?retry=wallet`
-          : `${siteUrl}/gift-cards?retry=${giftRetryMethod}`;
+          ? `${siteUrl}/booking/${bookingMetadata.flightId}${retryMethod === "wallet" ? "?retry=wallet" : ""}`
+          : `${siteUrl}/gift-cards?retry=${retryMethod}`;
 
       const copy = transactionFailedEmail({
         type,
         reference: type === "booking" ? "your booking" : `Gift card`,
         amount,
         retryUrl,
-        retryMethod: type === "booking" ? "wallet" : giftRetryMethod,
+        retryMethod,
+        sameMethod,
       });
-      console.log(`[transactions] ${id} sending decline notification to ${email}, retryMethod=${giftRetryMethod}`);
+      console.log(`[transactions] ${id} sending decline notification to ${email}, retryMethod=${retryMethod}, sameMethod=${sameMethod}`);
       const emailResult = await sendEmail({ to: email, ...copy });
       console.log(`[transactions] ${id} decline email result:`, emailResult);
       if (!emailResult.ok) emailWarning = `Declined, but the email didn't send: ${emailResult.error ?? "unknown error"}`;

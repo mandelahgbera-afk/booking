@@ -148,18 +148,20 @@ export const TransactionQueue = ({ initialRequests }: { initialRequests: Pending
               <button
                 disabled={pending && busyId === r.id}
                 onClick={() => resolve(r.id, "declined")}
+                title="Tells the buyer to try again the same way — a card declining once doesn't mean the card itself is bad."
                 className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
               >
                 <X size={14} />
-                Decline
+                Decline — retry same
               </button>
               <button
                 disabled={pending && busyId === r.id}
                 onClick={() => resolve(r.id, "declined_alt", alt)}
+                title="Tells the buyer to switch payment methods entirely."
                 className="flex items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-xs font-semibold text-orange-600 hover:bg-orange-100 disabled:opacity-50"
               >
                 <AltIcon size={14} />
-                Decline + recommend {alt}
+                Decline — recommend {alt}
               </button>
             </div>
 
