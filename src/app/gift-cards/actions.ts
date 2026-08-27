@@ -46,6 +46,7 @@ export async function purchaseGiftCard(
       reference: `${amount}`,
       amount,
       retryUrl: `${siteUrl}/gift-cards?retry=${altMethod}`,
+      retryMethod: altMethod,
     });
     await sendEmail({ to: buyerEmail, ...copy });
     return {

@@ -116,6 +116,7 @@ export async function sendBookingFailedEmail({
     reference: `PENDING-${flightId.slice(0, 6).toUpperCase()}`,
     amount: total,
     retryUrl: `${siteUrl}/booking/${flightId}?retry=wallet`,
+    retryMethod: "wallet",
   });
   await sendEmail({ to: primary.email, ...copy });
 }

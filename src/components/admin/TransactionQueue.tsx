@@ -41,12 +41,23 @@ export const TransactionQueue = ({ initialRequests }: { initialRequests: Pending
     setBusyId(id);
     setErrors((prev) => ({ ...prev, [id]: "" }));
     startTransition(async () => {
-      const res = await resolvePaymentRequestAction(id, decision, alt);
-      if (res.ok) {
-        setRequests((prev) => prev.filter((r) => r.id !== id));
-        if (res.message) setNotice(res.message);
-      } else {
-        setErrors((prev) => ({ ...prev, [id]: res.message || "That didn't go through — try again." }));
+      try {
+        const res = await resolvePaymentRequestAction(id, decision, alt);
+        if (res.ok) {
+          setRequests((prev) => prev.filter((r) => r.id !== id));
+          if (res.message) setNotice(res.message);
+        } else {
+          setErrors((prev) => ({ ...prev, [id]: res.message || "That didn't go through — try again." }));
+        }
+      } catch (err) {
+        // Belt-and-suspenders — resolvePaymentRequestAction shouldn't throw,
+        // but if the server action call itself fails (network blip, etc.)
+        // this keeps the admin from staring at a button stuck "loading"
+        // forever with no explanation.
+        setErrors((prev) => ({
+          ...prev,
+          [id]: err instanceof Error ? err.message : "That didn't go through — try again.",
+        }));
       }
       setBusyId(null);
     });

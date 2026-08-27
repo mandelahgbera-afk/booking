@@ -50,6 +50,13 @@ export async function resolvePaymentRequestAction(
   const { type, email, amount, metadata } = data;
   let emailWarning: string | undefined;
 
+  // The decision itself (resolve_payment_request above) already persisted
+  // before this point, so anything that throws from here on is a
+  // follow-up failure (booking/gift-card creation, or the notification
+  // email) — surfaced as a warning rather than left as an unhandled
+  // rejection that would otherwise leave the admin's UI hanging with no
+  // explanation and no email sent.
+  try {
   if (decision === "approved") {
     const publicClient = createPublicClient();
 
@@ -133,9 +140,16 @@ export async function resolvePaymentRequestAction(
       reference: type === "booking" ? "your booking" : `Gift card`,
       amount,
       retryUrl,
+      retryMethod: type === "booking" ? "wallet" : giftRetryMethod,
     });
     const emailResult = await sendEmail({ to: email, ...copy });
     if (!emailResult.ok) emailWarning = `Declined, but the email didn't send: ${emailResult.error ?? "unknown error"}`;
+  }
+  } catch (err) {
+    return {
+      ok: true,
+      message: `Decision saved, but something went wrong after: ${err instanceof Error ? err.message : "unknown error"}`,
+    };
   }
 
   await logAdminAction("payment_requests.resolve", { id, decision, type, alt: alt ?? null });
