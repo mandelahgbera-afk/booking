@@ -69,6 +69,16 @@ export async function resolvePaymentRequestAction(
     const { type, email, amount, metadata } = data;
     let emailWarning: string | undefined;
 
+    // Guards against pre-existing rows created before submitPaymentRequest
+    // / purchaseGiftCard started rejecting empty emails — the booking/gift
+    // card side effect still goes through (the buyer isn't punished for a
+    // bug that predates this fix), but nothing attempts to email "".
+    const canNotify = Boolean(email && email.includes("@"));
+    if (!canNotify) {
+      console.warn(`[transactions] ${id} has no valid email on file (got "${email}") — skipping notification`);
+      emailWarning = "No valid email was on file for this request, so no notification could be sent.";
+    }
+
     if (decision === "approved") {
       const publicClient = createPublicClient();
 
@@ -111,8 +121,10 @@ export async function resolvePaymentRequestAction(
           seats: m.seats,
           total: amount,
         });
-        const emailResult = await sendEmail({ to: email, ...copy });
-        if (!emailResult.ok) emailWarning = `Booking confirmed, but the email didn't send: ${emailResult.error ?? "unknown error"}`;
+        if (canNotify) {
+          const emailResult = await sendEmail({ to: email, ...copy });
+          if (!emailResult.ok) emailWarning = `Booking confirmed, but the email didn't send: ${emailResult.error ?? "unknown error"}`;
+        }
       } else {
         const m = metadata as unknown as GiftCardRequestMetadata;
         const { data: card, error: gErr } = await publicClient.rpc("issue_gift_card", {
@@ -130,9 +142,11 @@ export async function resolvePaymentRequestAction(
           p_result: { code: card.code, amount: Number(card.amount) },
         });
 
-        const copy = giftCardPurchasedEmail({ code: card.code, amount: Number(card.amount) });
-        const emailResult = await sendEmail({ to: email, ...copy });
-        if (!emailResult.ok) emailWarning = `Gift card issued, but the email didn't send: ${emailResult.error ?? "unknown error"}`;
+        if (canNotify) {
+          const copy = giftCardPurchasedEmail({ code: card.code, amount: Number(card.amount) });
+          const emailResult = await sendEmail({ to: email, ...copy });
+          if (!emailResult.ok) emailWarning = `Gift card issued, but the email didn't send: ${emailResult.error ?? "unknown error"}`;
+        }
       }
     } else {
       // declined or declined_alt — same retry-email pattern as the automatic
@@ -158,18 +172,20 @@ export async function resolvePaymentRequestAction(
           ? `${siteUrl}/booking/${bookingMetadata.flightId}${retryMethod === "wallet" ? "?retry=wallet" : ""}`
           : `${siteUrl}/gift-cards?retry=${retryMethod}`;
 
-      const copy = transactionFailedEmail({
-        type,
-        reference: type === "booking" ? "your booking" : `Gift card`,
-        amount,
-        retryUrl,
-        retryMethod,
-        sameMethod,
-      });
-      console.log(`[transactions] ${id} sending decline notification to ${email}, retryMethod=${retryMethod}, sameMethod=${sameMethod}`);
-      const emailResult = await sendEmail({ to: email, ...copy });
-      console.log(`[transactions] ${id} decline email result:`, emailResult);
-      if (!emailResult.ok) emailWarning = `Declined, but the email didn't send: ${emailResult.error ?? "unknown error"}`;
+      if (canNotify) {
+        const copy = transactionFailedEmail({
+          type,
+          reference: type === "booking" ? "your booking" : `Gift card`,
+          amount,
+          retryUrl,
+          retryMethod,
+          sameMethod,
+        });
+        console.log(`[transactions] ${id} sending decline notification to ${email}, retryMethod=${retryMethod}, sameMethod=${sameMethod}`);
+        const emailResult = await sendEmail({ to: email, ...copy });
+        console.log(`[transactions] ${id} decline email result:`, emailResult);
+        if (!emailResult.ok) emailWarning = `Declined, but the email didn't send: ${emailResult.error ?? "unknown error"}`;
+      }
     }
 
     await logAdminAction("payment_requests.resolve", { id, decision, type, alt: alt ?? null });

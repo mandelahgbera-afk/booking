@@ -20,10 +20,17 @@ export const CryptoPayment = ({
   amount,
   addresses,
   onConfirmed,
+  disabledReason,
 }: {
   amount: number;
   addresses: Record<CryptoCoin, string | null>;
   onConfirmed: () => void;
+  // Unlike the card form (which sits inside a <form required> and disables
+  // its own submit), this button had no dependency on the buyer email at
+  // all — a buyer could click "I've sent the payment" with that field
+  // still blank, submitting a request with nowhere to send the
+  // confirmation/decline email. This blocks that at the source.
+  disabledReason?: string;
 }) => {
   const [coin, setCoin] = useState<CryptoCoin>("usdt_bep20");
   const [confirming, setConfirming] = useState(false);
@@ -104,15 +111,21 @@ export const CryptoPayment = ({
       <Button
         onClick={handleConfirm}
         size="lg"
-        disabled={confirming || !address}
+        disabled={confirming || !address || Boolean(disabledReason)}
         className="w-full gap-2"
       >
         {confirming ? <Loader2 size={18} className="animate-spin" /> : <Bitcoin size={18} />}
         {confirming ? "Confirming on-chain…" : "I've sent the payment"}
       </Button>
-      <p className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
-        <CheckCircle2 size={12} /> We&apos;ll confirm your payment automatically
-      </p>
+      {disabledReason ? (
+        <p className="flex items-center justify-center gap-1.5 text-xs text-amber-600">
+          <AlertTriangle size={12} /> {disabledReason}
+        </p>
+      ) : (
+        <p className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
+          <CheckCircle2 size={12} /> We&apos;ll confirm your payment automatically
+        </p>
+      )}
     </div>
   );
 };

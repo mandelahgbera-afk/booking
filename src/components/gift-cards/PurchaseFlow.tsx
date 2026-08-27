@@ -328,6 +328,7 @@ export const PurchaseFlow = ({
             amount={effectiveAmount}
             addresses={cryptoAddresses}
             onConfirmed={handleCryptoConfirmed}
+            disabledReason={!buyerEmail.includes("@") ? "Add your email above first — that's where we'll send updates." : undefined}
           />
         )}
 

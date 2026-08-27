@@ -30,6 +30,13 @@ export async function purchaseGiftCard(
   recipientEmail?: string,
   method: "card" | "crypto" = "card"
 ): Promise<PurchaseResult> {
+  // Every branch below (success email, fail-and-retry email) needs a real
+  // address — reject up front instead of silently generating a code or
+  // logging a request nobody can be notified about.
+  if (!buyerEmail || !buyerEmail.includes("@")) {
+    return { ok: false, message: "A valid email is required." };
+  }
+
   // Both methods go through the same admin-controlled simulated outcome —
   // card can fail and recommend crypto, and crypto can fail and recommend
   // card right back, not just one direction. Manual review stays card-only

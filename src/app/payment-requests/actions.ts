@@ -15,6 +15,12 @@ export async function submitPaymentRequest(
   if (!isSupabaseConfigured) {
     return { ok: false, message: "Manual review needs Supabase configured." };
   }
+  // Every downstream consumer of this request (approve/decline/notification
+  // emails) assumes a real address exists — reject here instead of creating
+  // a request with nowhere for its outcome email to go.
+  if (!email || !email.includes("@")) {
+    return { ok: false, message: "A valid email is required." };
+  }
   try {
     const supabase = createPublicClient();
     const { data, error } = await supabase.rpc("create_payment_request", {
