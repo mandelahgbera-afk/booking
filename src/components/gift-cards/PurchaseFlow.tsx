@@ -12,7 +12,7 @@ import { logCardValidationTest } from "@/lib/card-test-log";
 import { CryptoPayment } from "./CryptoPayment";
 import { PendingPaymentReview } from "@/components/PendingPaymentReview";
 import { cn, formatCurrency } from "@/lib/utils";
-import { purchaseGiftCard, emailGiftCardCode } from "@/app/gift-cards/actions";
+import { purchaseGiftCard } from "@/app/gift-cards/actions";
 import { submitPaymentRequest } from "@/app/payment-requests/actions";
 import type { PlatformSettingsRow } from "@/lib/supabase/types";
 import type { CryptoCoin } from "@/lib/data";
@@ -34,12 +34,11 @@ export const PurchaseFlow = ({
   cryptoAddresses: Record<CryptoCoin, string | null>;
 }) => {
   const isRetry = Boolean(retryMethod);
-  // Nothing is mandatory to buy a gift card. Instant modes show the code +
-  // QR on screen; manual review delivers it to the still-open page via
-  // PendingPaymentReview's polling. An email is purely how we reach someone
-  // who closes the tab — so it's advised, never enforced. emailGiftCardCode
-  // covers sending it afterward.
-  const emailRequired = false;
+  // The buyer's email is where the receipt, the code, and any failure /
+  // decline notice go — so it's required. Everything else about the
+  // purchase can be recovered or retried; a code with no delivery address
+  // can't be.
+  const emailRequired = true;
   const [step, setStep] = useState<Step>("amount");
   const [reviewRequestId, setReviewRequestId] = useState<string | null>(null);
   const [amount, setAmount] = useState(100);
@@ -55,16 +54,12 @@ export const PurchaseFlow = ({
   // empty — drives the inline highlight on that field so the reason is
   // impossible to miss.
   const [emailMissing, setEmailMissing] = useState(false);
-  // Post-purchase delivery, for buyers who skipped the email field.
-  const [sendTo, setSendTo] = useState("");
-  const [sendStatus, setSendStatus] = useState<{ ok: boolean; message: string } | null>(null);
   const [card, setCard] = useState<CardValue>(EMPTY_CARD);
   const [cardValid, setCardValid] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const buyerEmailRef = useRef<HTMLInputElement>(null);
 
   const effectiveAmount = customAmount ? Number(customAmount) : amount;
-  const adviseEmail = paymentMode === "manual_review" && !buyerEmail.includes("@");
 
   const finish = (code: string, amt: number, emailWarning?: string) => {
     setIssued({ code, amount: amt, emailWarning });
@@ -246,46 +241,6 @@ export const PurchaseFlow = ({
           </div>
         )}
 
-        {!buyerEmail.includes("@") && (
-          <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
-            {sendStatus?.ok ? (
-              <p className="flex items-center gap-2 text-sm text-emerald-600">
-                <Check size={15} className="shrink-0" /> {sendStatus.message}
-              </p>
-            ) : (
-              <>
-                <label className="text-xs font-medium text-slate-500">
-                  Want a copy emailed to you? Optional — your code is already above.
-                </label>
-                <div className="mt-2 flex gap-2">
-                  <input
-                    type="email"
-                    value={sendTo}
-                    onChange={(e) => setSendTo(e.target.value)}
-                    placeholder="you@example.com"
-                    className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
-                  />
-                  <Button
-                    size="sm"
-                    disabled={pending || !sendTo.includes("@")}
-                    onClick={() =>
-                      startTransition(async () => {
-                        const res = await emailGiftCardCode(issued.code, issued.amount, sendTo);
-                        setSendStatus(res);
-                      })
-                    }
-                  >
-                    Send
-                  </Button>
-                </div>
-                {sendStatus && !sendStatus.ok && (
-                  <p className="mt-2 text-xs text-red-500">{sendStatus.message}</p>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
         <Button
           size="lg"
           className="w-full"
@@ -342,7 +297,8 @@ export const PurchaseFlow = ({
             setBuyerEmail(e.target.value);
             if (emailMissing && e.target.value.includes("@")) setEmailMissing(false);
           }}
-          placeholder="Your email (optional — we'll email the code too)"
+          autoComplete="email"
+          placeholder="Your email (we'll send the code and receipt here)"
           className={cn(
             "rounded-xl border px-4 py-3 text-sm outline-none focus:border-orange-400",
             emailMissing ? "border-red-300 bg-red-50" : "border-slate-200"
@@ -352,16 +308,10 @@ export const PurchaseFlow = ({
           type="email"
           value={recipientEmail}
           onChange={(e) => setRecipientEmail(e.target.value)}
+          autoComplete="off"
           placeholder="Recipient email (optional — for gifting)"
           className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-orange-400"
         />
-
-        {adviseEmail && (
-          <p className="-mt-1 text-xs text-slate-400">
-            No email? That&apos;s fine — just keep this page open and your code will appear here
-            once payment is verified.
-          </p>
-        )}
 
         <div className="flex gap-2">
           <button

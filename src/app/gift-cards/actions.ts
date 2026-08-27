@@ -120,24 +120,6 @@ export async function purchaseGiftCard(
   return { ok: true, code, amount: finalAmount, emailWarning };
 }
 
-// Optional, after-the-fact delivery — lets checkout demand nothing up front
-// while still giving the buyer a way to get the code emailed once they've
-// seen it. Doesn't re-issue anything; just re-sends the existing code.
-export async function emailGiftCardCode(
-  code: string,
-  amount: number,
-  email: string
-): Promise<{ ok: boolean; message: string }> {
-  if (!email || !email.includes("@")) {
-    return { ok: false, message: "Enter a valid email address." };
-  }
-  const copy = giftCardPurchasedEmail({ code, amount });
-  const res = await sendEmail({ to: email, ...copy });
-  return res.ok
-    ? { ok: true, message: `Sent to ${email}.` }
-    : { ok: false, message: res.error ?? "Couldn't send that email." };
-}
-
 export async function refundGiftCard(
   code: string,
   email: string

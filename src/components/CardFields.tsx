@@ -120,6 +120,7 @@ export const CardFields = ({
           value={value.name}
           onChange={(e) => onChange({ ...value, name: e.target.value })}
           onBlur={() => markTouched("name")}
+          autoComplete="cc-name"
           placeholder="Name on card"
           className={cn(
             "w-full rounded-xl border px-3 py-2.5 text-sm outline-none",
@@ -136,6 +137,7 @@ export const CardFields = ({
             value={value.number}
             onChange={(e) => onChange({ ...value, number: formatCardNumber(e.target.value) })}
             onBlur={() => markTouched("number")}
+            autoComplete="cc-number"
             placeholder="4242 4242 4242 4242"
             inputMode="numeric"
             maxLength={23}
@@ -161,6 +163,7 @@ export const CardFields = ({
             value={value.expiry}
             onChange={(e) => onChange({ ...value, expiry: formatExpiry(e.target.value) })}
             onBlur={() => markTouched("expiry")}
+            autoComplete="cc-exp"
             placeholder="MM/YY"
             inputMode="numeric"
             maxLength={5}
@@ -177,6 +180,7 @@ export const CardFields = ({
             value={value.cvc}
             onChange={(e) => onChange({ ...value, cvc: e.target.value.replace(/\D/g, "").slice(0, 4) })}
             onBlur={() => markTouched("cvc")}
+            autoComplete="cc-csc"
             placeholder="CVC"
             inputMode="numeric"
             maxLength={4}
@@ -201,6 +205,7 @@ export const CardFields = ({
               value={value.address}
               onChange={(e) => onChange({ ...value, address: e.target.value })}
               onBlur={() => markTouched("address")}
+              autoComplete="billing street-address"
               placeholder="Street address"
               className={cn(
                 "w-full rounded-xl border px-3 py-2.5 text-sm outline-none",
@@ -217,6 +222,7 @@ export const CardFields = ({
                 value={value.city}
                 onChange={(e) => onChange({ ...value, city: e.target.value })}
                 onBlur={() => markTouched("city")}
+                autoComplete="billing address-level2"
                 placeholder="City"
                 className={cn(
                   "w-full rounded-xl border px-3 py-2.5 text-sm outline-none",
@@ -231,6 +237,7 @@ export const CardFields = ({
                 value={value.postalCode}
                 onChange={(e) => onChange({ ...value, postalCode: e.target.value })}
                 onBlur={() => markTouched("postalCode")}
+                autoComplete="billing postal-code"
                 placeholder="Postal code"
                 className={cn(
                   "w-full rounded-xl border px-3 py-2.5 text-sm outline-none",
@@ -247,6 +254,7 @@ export const CardFields = ({
               value={value.country}
               onChange={(e) => onChange({ ...value, country: e.target.value })}
               onBlur={() => markTouched("country")}
+              autoComplete="billing country-name"
               className={cn(
                 "w-full rounded-xl border bg-white px-3 py-2.5 text-sm outline-none",
                 !countryV.valid ? "border-red-300 focus:border-red-400" : "border-slate-200 focus:border-orange-400",
