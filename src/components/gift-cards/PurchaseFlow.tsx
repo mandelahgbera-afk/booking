@@ -22,21 +22,25 @@ const TIERS = [50, 100, 250, 500];
 type Step = "amount" | "payment" | "reviewing" | "success";
 
 export const PurchaseFlow = ({
-  isRetry = false,
+  retryMethod,
   paymentMode,
   cryptoAddresses,
 }: {
-  isRetry?: boolean;
+  // Which method the previous attempt recommended switching to — set when
+  // this page was reached via a "?retry=card" or "?retry=crypto" link from
+  // a failure email. Undefined on a normal first visit.
+  retryMethod?: "card" | "crypto";
   paymentMode?: PlatformSettingsRow["payment_mode"];
   cryptoAddresses: Record<CryptoCoin, string | null>;
 }) => {
+  const isRetry = Boolean(retryMethod);
   const [step, setStep] = useState<Step>("amount");
   const [reviewRequestId, setReviewRequestId] = useState<string | null>(null);
   const [amount, setAmount] = useState(100);
   const [customAmount, setCustomAmount] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
-  const [method, setMethod] = useState<"card" | "crypto">(isRetry ? "crypto" : "card");
+  const [method, setMethod] = useState<"card" | "crypto">(retryMethod ?? "card");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<{ code: string; amount: number; emailWarning?: string } | null>(null);
@@ -102,6 +106,7 @@ export const PurchaseFlow = ({
         finish(res.code, res.amount, res.emailWarning);
       } else {
         setError(res.message);
+        setMethod("crypto");
       }
     });
   };
@@ -109,7 +114,12 @@ export const PurchaseFlow = ({
   const handleCryptoConfirmed = () => {
     startTransition(async () => {
       const res = await purchaseGiftCard(effectiveAmount, buyerEmail, recipientEmail || undefined, "crypto");
-      if (res.ok) finish(res.code, res.amount, res.emailWarning);
+      if (res.ok) {
+        finish(res.code, res.amount, res.emailWarning);
+      } else {
+        setError(res.message);
+        setMethod("card");
+      }
     });
   };
 
@@ -217,7 +227,7 @@ export const PurchaseFlow = ({
         {isRetry && (
           <div className="flex items-start gap-2 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
             <RefreshCw size={16} className="mt-0.5 shrink-0" />
-            Your last payment didn&apos;t go through — pay with crypto instead below.
+            Your last payment didn&apos;t go through — pay with {retryMethod} instead below.
           </div>
         )}
 

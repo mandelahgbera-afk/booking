@@ -65,7 +65,7 @@ export default async function GiftCardsPage({
             </p>
           </div>
           <PurchaseFlow
-            isRetry={retry === "crypto"}
+            retryMethod={retry === "card" || retry === "crypto" ? retry : undefined}
             paymentMode={settings.payment_mode}
             cryptoAddresses={cryptoAddresses}
           />

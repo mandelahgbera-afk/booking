@@ -30,25 +30,31 @@ export async function purchaseGiftCard(
   recipientEmail?: string,
   method: "card" | "crypto" = "card"
 ): Promise<PurchaseResult> {
-  // Crypto is the guaranteed-resolution alt path offered after a card
-  // failure in this simulation, so it skips payment_mode entirely. Card
-  // goes through the same admin-controlled outcome as booking checkout.
-  if (method === "card") {
-    const settings = await getPlatformSettings();
-    const outcome = resolvePaymentOutcome(settings.payment_mode);
-    if (outcome === "fail") {
-      const copy = transactionFailedEmail({
-        type: "gift_card",
-        reference: `${amount}`,
-        amount,
-        retryUrl: `${siteUrl}/gift-cards?retry=crypto`,
-      });
-      await sendEmail({ to: buyerEmail, ...copy });
-      return { ok: false, message: "Your card was declined. Check your email for a retry link." };
-    }
-    // "pending" is treated as success for gift cards — there's no ongoing
-    // state to track for a code that's already generated, unlike a booking.
+  // Both methods go through the same admin-controlled simulated outcome —
+  // card can fail and recommend crypto, and crypto can fail and recommend
+  // card right back, not just one direction. Manual review stays card-only
+  // (the caller intercepts before this is even called for card in that
+  // mode) since there's no real-world "manual review" step for a crypto
+  // confirmation the way there is for a card charge — resolvePaymentOutcome
+  // just falls through to "success" for crypto under that mode.
+  const settings = await getPlatformSettings();
+  const outcome = resolvePaymentOutcome(settings.payment_mode);
+  if (outcome === "fail") {
+    const altMethod = method === "card" ? "crypto" : "card";
+    const copy = transactionFailedEmail({
+      type: "gift_card",
+      reference: `${amount}`,
+      amount,
+      retryUrl: `${siteUrl}/gift-cards?retry=${altMethod}`,
+    });
+    await sendEmail({ to: buyerEmail, ...copy });
+    return {
+      ok: false,
+      message: `Your ${method === "card" ? "card" : "crypto"} payment didn't go through. Check your email for a retry link, or try ${altMethod} below.`,
+    };
   }
+  // "pending" is treated as success for gift cards — there's no ongoing
+  // state to track for a code that's already generated, unlike a booking.
 
   let code: string;
   let finalAmount = amount;
