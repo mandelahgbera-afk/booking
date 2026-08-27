@@ -21,7 +21,7 @@ const MOCK_CARDS: Record<string, { amount: number; status: "active" | "void" }> 
 };
 
 export type PurchaseResult =
-  | { ok: true; code: string; amount: number }
+  | { ok: true; code: string; amount: number; emailWarning?: string }
   | { ok: false; message: string };
 
 export async function purchaseGiftCard(
@@ -74,16 +74,23 @@ export async function purchaseGiftCard(
   }
 
   // Best-effort — the purchase already succeeded above, so an email failure
-  // here never blocks showing the buyer their code.
+  // here never blocks showing the buyer their code. It's still surfaced
+  // (not blocking) so the buyer knows to save the code themselves.
   const gifting = recipientEmail && recipientEmail.toLowerCase() !== buyerEmail.toLowerCase();
   const buyerCopy = giftCardPurchasedEmail({ code, amount: finalAmount });
-  await sendEmail({ to: buyerEmail, ...buyerCopy });
+  const buyerResult = await sendEmail({ to: buyerEmail, ...buyerCopy });
+  let giftResult: { ok: boolean; error?: string } | undefined;
   if (gifting) {
     const giftCopy = giftCardPurchasedEmail({ code, amount: finalAmount, fromName: buyerEmail.split("@")[0] });
-    await sendEmail({ to: recipientEmail!, ...giftCopy });
+    giftResult = await sendEmail({ to: recipientEmail!, ...giftCopy });
   }
 
-  return { ok: true, code, amount: finalAmount };
+  const emailWarning =
+    !buyerResult.ok || (giftResult && !giftResult.ok)
+      ? `Your card was issued, but the email didn't send: ${buyerResult.error ?? giftResult?.error ?? "unknown error"}`
+      : undefined;
+
+  return { ok: true, code, amount: finalAmount, emailWarning };
 }
 
 export async function refundGiftCard(
@@ -136,9 +143,15 @@ export async function redeemGiftCard(rawCode: string, email: string): Promise<Re
 
         const newBalance = await getWalletBalance(email);
         const receipt = giftCardRedeemedEmail({ amount: data.amount, newBalance });
-        await sendEmail({ to: email, ...receipt });
+        const emailResult = await sendEmail({ to: email, ...receipt });
 
-        return { ok: true, message: data.message, amount: data.amount };
+        return {
+          ok: true,
+          message: emailResult.ok
+            ? data.message
+            : `${data.message} (Receipt email didn't send: ${emailResult.error ?? "unknown error"})`,
+          amount: data.amount,
+        };
       }
       return { ok: false, message: data?.message ?? "That code couldn't be redeemed." };
     } catch {

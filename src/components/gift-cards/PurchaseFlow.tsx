@@ -39,7 +39,7 @@ export const PurchaseFlow = ({
   const [method, setMethod] = useState<"card" | "crypto">(isRetry ? "crypto" : "card");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [issued, setIssued] = useState<{ code: string; amount: number } | null>(null);
+  const [issued, setIssued] = useState<{ code: string; amount: number; emailWarning?: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [card, setCard] = useState<CardValue>(EMPTY_CARD);
   const [cardValid, setCardValid] = useState(false);
@@ -47,8 +47,8 @@ export const PurchaseFlow = ({
 
   const effectiveAmount = customAmount ? Number(customAmount) : amount;
 
-  const finish = (code: string, amt: number) => {
-    setIssued({ code, amount: amt });
+  const finish = (code: string, amt: number, emailWarning?: string) => {
+    setIssued({ code, amount: amt, emailWarning });
     setStep("success");
     confetti({
       particleCount: 100,
@@ -99,7 +99,7 @@ export const PurchaseFlow = ({
     startTransition(async () => {
       const res = await purchaseGiftCard(effectiveAmount, buyerEmail, recipientEmail || undefined, "card");
       if (res.ok) {
-        finish(res.code, res.amount);
+        finish(res.code, res.amount, res.emailWarning);
       } else {
         setError(res.message);
       }
@@ -109,7 +109,7 @@ export const PurchaseFlow = ({
   const handleCryptoConfirmed = () => {
     startTransition(async () => {
       const res = await purchaseGiftCard(effectiveAmount, buyerEmail, recipientEmail || undefined, "crypto");
-      if (res.ok) finish(res.code, res.amount);
+      if (res.ok) finish(res.code, res.amount, res.emailWarning);
     });
   };
 
@@ -180,6 +180,13 @@ export const PurchaseFlow = ({
             {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
           </button>
         </div>
+
+        {issued.emailWarning && (
+          <div className="flex w-full items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-left text-sm text-amber-800">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" />
+            {issued.emailWarning}
+          </div>
+        )}
 
         <Button
           size="lg"

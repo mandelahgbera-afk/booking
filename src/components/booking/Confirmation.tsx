@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, PlaneTakeoff, TrainFront, Bus, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, PlaneTakeoff, TrainFront, Bus, XCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/Button";
 import { formatCurrency } from "@/lib/utils";
@@ -13,6 +13,7 @@ export const Confirmation = ({
   total,
   outcome,
   reference,
+  emailWarning,
 }: {
   offer: FlightOffer;
   passengers: Passenger[];
@@ -20,6 +21,7 @@ export const Confirmation = ({
   total: number;
   outcome: PaymentOutcome;
   reference: string;
+  emailWarning?: string;
 }) => {
   const statusMeta = {
     success: {
@@ -57,6 +59,13 @@ export const Confirmation = ({
         <h2 className="text-2xl font-bold text-slate-900">{statusMeta.title}</h2>
         <p className="mt-2 text-sm text-slate-500">{statusMeta.body}</p>
       </div>
+
+      {emailWarning && (
+        <div className="flex w-full items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-left text-sm text-amber-800">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          {emailWarning}
+        </div>
+      )}
 
       {outcome !== "fail" && (
         <div className="w-full overflow-hidden rounded-3xl bg-slate-900 text-white shadow-xl">

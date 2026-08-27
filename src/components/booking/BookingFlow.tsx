@@ -27,7 +27,9 @@ export const BookingFlow = ({
   const [step, setStep] = useState(0);
   const [passengers, setPassengers] = useState<Passenger[]>([{ name: "", email: "" }]);
   const [seats, setSeats] = useState<string[]>([]);
-  const [result, setResult] = useState<{ outcome: PaymentOutcome; reference: string } | null>(
+  const [result, setResult] = useState<
+    { outcome: PaymentOutcome; reference: string; emailWarning?: string } | null
+  >(
     null
   );
   const [reviewRequestId, setReviewRequestId] = useState<string | null>(null);
@@ -119,7 +121,7 @@ export const BookingFlow = ({
             }}
             onResult={async (outcome, transactionId, method) => {
               if (outcome === "success") {
-                const { reference } = await confirmBooking({
+                const { reference, emailWarning } = await confirmBooking({
                   offer,
                   passengers,
                   seats,
@@ -127,7 +129,7 @@ export const BookingFlow = ({
                   method,
                   transactionId,
                 });
-                setResult({ outcome, reference });
+                setResult({ outcome, reference, emailWarning });
               } else {
                 setResult({ outcome, reference: transactionId.slice(4, 10).toUpperCase() });
                 if (outcome === "fail") {
@@ -146,6 +148,7 @@ export const BookingFlow = ({
             total={total}
             outcome={result.outcome}
             reference={result.reference}
+            emailWarning={result.emailWarning}
           />
         )}
 

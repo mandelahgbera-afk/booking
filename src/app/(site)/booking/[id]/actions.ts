@@ -29,7 +29,7 @@ export async function confirmBooking({
   total: number;
   method: string;
   transactionId: string;
-}): Promise<{ reference: string }> {
+}): Promise<{ reference: string; emailWarning?: string }> {
   const fallbackReference = transactionId.slice(4, 10).toUpperCase();
   const primary = passengers[0];
   let reference = fallbackReference;
@@ -57,6 +57,8 @@ export async function confirmBooking({
     }
   }
 
+  let emailWarning: string | undefined;
+
   if (primary?.email) {
     const confirmation = bookingConfirmationEmail({
       passengerName: primary.name || "Traveler",
@@ -71,7 +73,7 @@ export async function confirmBooking({
       seats,
       total,
     });
-    await sendEmail({ to: primary.email, ...confirmation });
+    const confirmationResult = await sendEmail({ to: primary.email, ...confirmation });
 
     const receipt = paymentReceiptEmail({
       reference,
@@ -80,10 +82,18 @@ export async function confirmBooking({
       amount: total,
       date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
     });
-    await sendEmail({ to: primary.email, ...receipt });
+    const receiptResult = await sendEmail({ to: primary.email, ...receipt });
+
+    // Surfaced (not blocking) — the traveler is already on the confirmation
+    // screen either way, but they should know if they won't get an email.
+    if (!confirmationResult.ok || !receiptResult.ok) {
+      emailWarning = `Booking confirmed, but the email didn't send: ${
+        confirmationResult.error ?? receiptResult.error ?? "unknown error"
+      }`;
+    }
   }
 
-  return { reference };
+  return { reference, emailWarning };
 }
 
 // Fired when a simulated card payment fails — emails a retry link that
@@ -167,9 +177,14 @@ export async function requestBookingRefund(
       to: "",
       refundAmount: data.amount,
     });
-    await sendEmail({ to: email, ...copy });
+    const emailResult = await sendEmail({ to: email, ...copy });
 
-    return { ok: true, message: "Refund issued — check your email for confirmation." };
+    return {
+      ok: true,
+      message: emailResult.ok
+        ? "Refund issued — check your email for confirmation."
+        : `Refund issued, but the confirmation email didn't send: ${emailResult.error ?? "unknown error"}`,
+    };
   } catch {
     return { ok: false, message: "Refund failed." };
   }
