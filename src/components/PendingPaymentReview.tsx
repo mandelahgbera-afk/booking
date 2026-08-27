@@ -18,7 +18,7 @@ export const PendingPaymentReview = ({
 }: {
   requestId: string;
   onApproved: (result: Record<string, unknown> | null) => void;
-  onDeclined: (altRecommendation: "wallet" | "crypto" | null) => void;
+  onDeclined: (altRecommendation: "wallet" | "crypto" | "card" | null) => void;
 }) => {
   const settled = useRef(false);
 

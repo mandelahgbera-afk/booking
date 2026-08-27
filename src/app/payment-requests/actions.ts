@@ -32,7 +32,7 @@ export async function submitPaymentRequest(
 
 export type PaymentRequestPoll = {
   status: "pending" | "approved" | "declined" | "declined_alt" | "not_found";
-  altRecommendation: "wallet" | "crypto" | null;
+  altRecommendation: "wallet" | "crypto" | "card" | null;
   result: Record<string, unknown> | null;
 };
 

@@ -29,12 +29,13 @@ type BookingRequestMetadata = {
 type GiftCardRequestMetadata = {
   buyerEmail: string;
   recipientEmail: string | null;
+  method?: "card" | "crypto";
 };
 
 export async function resolvePaymentRequestAction(
   id: string,
   decision: "approved" | "declined" | "declined_alt",
-  alt?: "wallet" | "crypto"
+  alt?: "wallet" | "crypto" | "card"
 ): Promise<{ ok: boolean; message?: string }> {
   const supabase = await createClient(); // admin-authenticated, cookie-bound
 
@@ -117,10 +118,15 @@ export async function resolvePaymentRequestAction(
   } else {
     // declined or declined_alt — same retry-email pattern as the automatic
     // "simulate fail" path, just triggered by an admin decision instead.
+    // For a gift card, retry defaults to the opposite of whichever method
+    // was actually used (not always crypto) unless the admin's own `alt`
+    // choice says otherwise.
+    const giftMetadata = metadata as unknown as GiftCardRequestMetadata;
+    const giftRetryMethod = alt === "card" || alt === "crypto" ? alt : giftMetadata.method === "crypto" ? "card" : "crypto";
     const retryUrl =
       type === "booking"
         ? `${siteUrl}/booking/${(metadata as unknown as BookingRequestMetadata).flightId}?retry=wallet`
-        : `${siteUrl}/gift-cards?retry=crypto`;
+        : `${siteUrl}/gift-cards?retry=${giftRetryMethod}`;
 
     const copy = transactionFailedEmail({
       type,

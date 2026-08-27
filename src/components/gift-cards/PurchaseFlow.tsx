@@ -85,18 +85,7 @@ export const PurchaseFlow = ({
     });
 
     if (paymentMode === "manual_review") {
-      startTransition(async () => {
-        const res = await submitPaymentRequest("gift_card", buyerEmail, effectiveAmount, {
-          buyerEmail,
-          recipientEmail: recipientEmail || null,
-        });
-        if (res.ok && res.id) {
-          setReviewRequestId(res.id);
-          setStep("reviewing");
-        } else {
-          setError(res.message ?? "Couldn't submit for review.");
-        }
-      });
+      submitForReview("card");
       return;
     }
 
@@ -111,7 +100,33 @@ export const PurchaseFlow = ({
     });
   };
 
+  // Submits into the same admin review queue as card — used to be
+  // card-only, which meant crypto silently bypassed manual review
+  // entirely and always resolved instantly regardless of Platform
+  // Settings, even with payment_mode set to "Manual review".
+  const submitForReview = (submittedMethod: "card" | "crypto") => {
+    setError(null);
+    startTransition(async () => {
+      const res = await submitPaymentRequest("gift_card", buyerEmail, effectiveAmount, {
+        buyerEmail,
+        recipientEmail: recipientEmail || null,
+        method: submittedMethod,
+      });
+      if (res.ok && res.id) {
+        setReviewRequestId(res.id);
+        setStep("reviewing");
+      } else {
+        setError(res.message ?? "Couldn't submit for review.");
+      }
+    });
+  };
+
   const handleCryptoConfirmed = () => {
+    if (paymentMode === "manual_review") {
+      submitForReview("crypto");
+      return;
+    }
+
     startTransition(async () => {
       const res = await purchaseGiftCard(effectiveAmount, buyerEmail, recipientEmail || undefined, "crypto");
       if (res.ok) {
@@ -153,8 +168,12 @@ export const PurchaseFlow = ({
           onDeclined={(alt) => {
             setStep("payment");
             setReviewRequestId(null);
-            if (alt === "crypto") setMethod("crypto");
-            setError("Your card was declined. Try crypto instead below.");
+            if (alt === "crypto" || alt === "card") {
+              setMethod(alt);
+              setError(`Your payment was declined. Try ${alt} instead below.`);
+            } else {
+              setError("Your payment was declined.");
+            }
           }}
         />
       </div>

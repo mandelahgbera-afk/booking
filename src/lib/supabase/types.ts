@@ -168,7 +168,7 @@ export type PaymentRequestRow = {
   email: string;
   amount: number;
   status: "pending" | "approved" | "declined" | "declined_alt";
-  alt_recommendation: "wallet" | "crypto" | null;
+  alt_recommendation: "wallet" | "crypto" | "card" | null;
   metadata: Record<string, unknown>;
   result: Record<string, unknown> | null;
   created_at: string;

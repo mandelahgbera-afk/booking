@@ -573,12 +573,24 @@ create table if not exists public.payment_requests (
   amount numeric(10, 2) not null,
   status text not null default 'pending'
     check (status in ('pending', 'approved', 'declined', 'declined_alt')),
-  alt_recommendation text check (alt_recommendation in ('wallet', 'crypto')),
-  metadata jsonb not null default '{}'::jsonb,   -- offer/passengers/seats/etc, or gift card amount+recipient
+  alt_recommendation text check (alt_recommendation in ('wallet', 'crypto', 'card')),
+  metadata jsonb not null default '{}'::jsonb,   -- offer/passengers/seats/etc, or gift card amount+recipient+method
   result jsonb,                                  -- populated on approve: { reference } or { code }
   created_at timestamptz not null default now(),
   resolved_at timestamptz
 );
+
+-- Idempotent — 'card' is a newer alt_recommendation value (a crypto gift
+-- card purchase under manual review now recommends switching back to
+-- card, not just card -> crypto), so a project that ran an earlier
+-- version of this file has the narrower constraint and needs it widened.
+do $$
+begin
+  alter table public.payment_requests drop constraint payment_requests_alt_recommendation_check;
+exception when undefined_object then null;
+end $$;
+alter table public.payment_requests add constraint payment_requests_alt_recommendation_check
+  check (alt_recommendation in ('wallet', 'crypto', 'card'));
 
 create index if not exists payment_requests_status_idx on public.payment_requests (status, created_at);
 
