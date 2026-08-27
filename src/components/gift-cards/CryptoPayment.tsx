@@ -21,16 +21,18 @@ export const CryptoPayment = ({
   addresses,
   onConfirmed,
   disabledReason,
+  onBlocked,
 }: {
   amount: number;
   addresses: Record<CryptoCoin, string | null>;
   onConfirmed: () => void;
-  // Unlike the card form (which sits inside a <form required> and disables
-  // its own submit), this button had no dependency on the buyer email at
-  // all — a buyer could click "I've sent the payment" with that field
-  // still blank, submitting a request with nowhere to send the
-  // confirmation/decline email. This blocks that at the source.
+  // Why this click can't proceed yet (e.g. no buyer email). The button
+  // stays CLICKABLE on purpose: a disabled button gives zero feedback, so
+  // a buyer who hasn't filled the email in experiences it as "the button
+  // is broken" rather than "I missed a field". Clicking now always does
+  // something visible — see onBlocked.
   disabledReason?: string;
+  onBlocked?: () => void;
 }) => {
   const [coin, setCoin] = useState<CryptoCoin>("usdt_bep20");
   const [confirming, setConfirming] = useState(false);
@@ -48,6 +50,10 @@ export const CryptoPayment = ({
   };
 
   const handleConfirm = () => {
+    if (disabledReason) {
+      onBlocked?.();
+      return;
+    }
     setConfirming(true);
     // Crypto is the guaranteed-success alt path in this simulation — the
     // point of offering it after a card failure is that it resolves.
@@ -111,7 +117,7 @@ export const CryptoPayment = ({
       <Button
         onClick={handleConfirm}
         size="lg"
-        disabled={confirming || !address || Boolean(disabledReason)}
+        disabled={confirming || !address}
         className="w-full gap-2"
       >
         {confirming ? <Loader2 size={18} className="animate-spin" /> : <Bitcoin size={18} />}

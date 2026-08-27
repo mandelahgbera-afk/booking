@@ -45,9 +45,14 @@ export const PurchaseFlow = ({
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<{ code: string; amount: number; emailWarning?: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  // Set when a payment click is blocked purely because the email field is
+  // empty — drives the inline highlight on that field so the reason is
+  // impossible to miss.
+  const [emailMissing, setEmailMissing] = useState(false);
   const [card, setCard] = useState<CardValue>(EMPTY_CARD);
   const [cardValid, setCardValid] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const buyerEmailRef = useRef<HTMLInputElement>(null);
 
   const effectiveAmount = customAmount ? Number(customAmount) : amount;
 
@@ -65,6 +70,17 @@ export const PurchaseFlow = ({
   const handleCardPay = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Same reasoning as the crypto button: never silently no-op. If the
+    // email is missing, say so and jump to the field instead of leaving a
+    // dead-looking button.
+    if (!buyerEmail.includes("@")) {
+      setEmailMissing(true);
+      setError("Enter your email above before paying — that's where your gift card and any updates go.");
+      buyerEmailRef.current?.focus();
+      buyerEmailRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
 
     // TEMPORARY — MVP card-validator QA log, see src/lib/card-test-log.ts.
     const digits = card.number.replace(/\D/g, "");
@@ -268,12 +284,19 @@ export const PurchaseFlow = ({
         </AnimatePresence>
 
         <input
+          ref={buyerEmailRef}
           required
           type="email"
           value={buyerEmail}
-          onChange={(e) => setBuyerEmail(e.target.value)}
+          onChange={(e) => {
+            setBuyerEmail(e.target.value);
+            if (emailMissing && e.target.value.includes("@")) setEmailMissing(false);
+          }}
           placeholder="Your email (we'll send the code here)"
-          className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-orange-400"
+          className={cn(
+            "rounded-xl border px-4 py-3 text-sm outline-none focus:border-orange-400",
+            emailMissing ? "border-red-300 bg-red-50" : "border-slate-200"
+          )}
         />
         <input
           type="email"
@@ -316,7 +339,7 @@ export const PurchaseFlow = ({
             <Button
               type="submit"
               size="lg"
-              disabled={pending || !cardValid || !buyerEmail.includes("@")}
+              disabled={pending || !cardValid}
               className="w-full gap-2"
             >
               {pending && <Loader2 size={18} className="animate-spin" />}
@@ -329,6 +352,12 @@ export const PurchaseFlow = ({
             addresses={cryptoAddresses}
             onConfirmed={handleCryptoConfirmed}
             disabledReason={!buyerEmail.includes("@") ? "Add your email above first — that's where we'll send updates." : undefined}
+            onBlocked={() => {
+              setEmailMissing(true);
+              setError("Enter your email above before confirming — that's where your gift card and any updates go.");
+              buyerEmailRef.current?.focus();
+              buyerEmailRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
           />
         )}
 
