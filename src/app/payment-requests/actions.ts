@@ -15,17 +15,16 @@ export async function submitPaymentRequest(
   if (!isSupabaseConfigured) {
     return { ok: false, message: "Manual review needs Supabase configured." };
   }
-  // Every downstream consumer of this request (approve/decline/notification
-  // emails) assumes a real address exists — reject here instead of creating
-  // a request with nowhere for its outcome email to go.
-  if (!email || !email.includes("@")) {
-    return { ok: false, message: "A valid email is required." };
-  }
+  // Email is optional: the buyer's pending screen polls for the outcome, so
+  // an open tab receives the code (or the decline) without one. It's only
+  // how we reach them if they close the tab — resolvePaymentRequestAction
+  // skips notification cleanly when it's absent.
+  const normalizedEmail = email && email.includes("@") ? email : "";
   try {
     const supabase = createPublicClient();
     const { data, error } = await supabase.rpc("create_payment_request", {
       p_type: type,
-      p_email: email,
+      p_email: normalizedEmail,
       p_amount: amount,
       p_metadata: metadata,
     });

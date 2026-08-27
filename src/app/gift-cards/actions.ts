@@ -30,12 +30,12 @@ export async function purchaseGiftCard(
   recipientEmail?: string,
   method: "card" | "crypto" = "card"
 ): Promise<PurchaseResult> {
-  // Every branch below (success email, fail-and-retry email) needs a real
-  // address — reject up front instead of silently generating a code or
-  // logging a request nobody can be notified about.
-  if (!buyerEmail || !buyerEmail.includes("@")) {
-    return { ok: false, message: "A valid email is required." };
-  }
+  // Email is OPTIONAL on this path: the buyer stays on the page and gets
+  // their code + QR on screen the moment this resolves, so nothing is lost
+  // by not having an address. It's only mandatory under manual_review,
+  // where the outcome lands minutes later with the buyer long gone — and
+  // that mode never reaches this function (submitPaymentRequest handles it).
+  const canEmail = Boolean(buyerEmail && buyerEmail.includes("@"));
 
   // Both methods go through the same admin-controlled simulated outcome —
   // card can fail and recommend crypto, and crypto can fail and recommend
@@ -48,17 +48,21 @@ export async function purchaseGiftCard(
   const outcome = resolvePaymentOutcome(settings.payment_mode);
   if (outcome === "fail") {
     const altMethod = method === "card" ? "crypto" : "card";
-    const copy = transactionFailedEmail({
-      type: "gift_card",
-      reference: `${amount}`,
-      amount,
-      retryUrl: `${siteUrl}/gift-cards?retry=${altMethod}`,
-      retryMethod: altMethod,
-    });
-    await sendEmail({ to: buyerEmail, ...copy });
+    if (canEmail) {
+      const copy = transactionFailedEmail({
+        type: "gift_card",
+        reference: `${amount}`,
+        amount,
+        retryUrl: `${siteUrl}/gift-cards?retry=${altMethod}`,
+        retryMethod: altMethod,
+      });
+      await sendEmail({ to: buyerEmail, ...copy });
+    }
     return {
       ok: false,
-      message: `Your ${method === "card" ? "card" : "crypto"} payment didn't go through. Check your email for a retry link, or try ${altMethod} below.`,
+      message: canEmail
+        ? `Your ${method === "card" ? "card" : "crypto"} payment didn't go through. Check your email for a retry link, or try ${altMethod} below.`
+        : `Your ${method === "card" ? "card" : "crypto"} payment didn't go through. Try ${altMethod} below instead.`,
     };
   }
   // "pending" is treated as success for gift cards — there's no ongoing
@@ -77,7 +81,7 @@ export async function purchaseGiftCard(
       const { data, error } = await supabase.rpc("issue_gift_card", {
         p_amount: amount,
         p_recipient_email: recipientEmail || null,
-        p_buyer_email: buyerEmail,
+        p_buyer_email: canEmail ? buyerEmail : null,
       });
       if (error || !data) throw error ?? new Error("No card returned");
       code = data.code;
@@ -89,22 +93,49 @@ export async function purchaseGiftCard(
 
   // Best-effort — the purchase already succeeded above, so an email failure
   // here never blocks showing the buyer their code. It's still surfaced
-  // (not blocking) so the buyer knows to save the code themselves.
-  const gifting = recipientEmail && recipientEmail.toLowerCase() !== buyerEmail.toLowerCase();
-  const buyerCopy = giftCardPurchasedEmail({ code, amount: finalAmount });
-  const buyerResult = await sendEmail({ to: buyerEmail, ...buyerCopy });
+  // (not blocking) so the buyer knows to save the code themselves. With no
+  // address given, this is skipped entirely: the code + QR on screen IS the
+  // delivery, and emailGiftCardCode below can send it later on request.
+  let buyerResult: { ok: boolean; error?: string } | undefined;
   let giftResult: { ok: boolean; error?: string } | undefined;
-  if (gifting) {
-    const giftCopy = giftCardPurchasedEmail({ code, amount: finalAmount, fromName: buyerEmail.split("@")[0] });
-    giftResult = await sendEmail({ to: recipientEmail!, ...giftCopy });
+
+  if (canEmail) {
+    const buyerCopy = giftCardPurchasedEmail({ code, amount: finalAmount });
+    buyerResult = await sendEmail({ to: buyerEmail, ...buyerCopy });
+  }
+  if (recipientEmail && recipientEmail.includes("@") && recipientEmail.toLowerCase() !== buyerEmail?.toLowerCase()) {
+    const giftCopy = giftCardPurchasedEmail({
+      code,
+      amount: finalAmount,
+      fromName: canEmail ? buyerEmail.split("@")[0] : "a friend",
+    });
+    giftResult = await sendEmail({ to: recipientEmail, ...giftCopy });
   }
 
   const emailWarning =
-    !buyerResult.ok || (giftResult && !giftResult.ok)
-      ? `Your card was issued, but the email didn't send: ${buyerResult.error ?? giftResult?.error ?? "unknown error"}`
+    (buyerResult && !buyerResult.ok) || (giftResult && !giftResult.ok)
+      ? `Your card was issued, but the email didn't send: ${buyerResult?.error ?? giftResult?.error ?? "unknown error"}`
       : undefined;
 
   return { ok: true, code, amount: finalAmount, emailWarning };
+}
+
+// Optional, after-the-fact delivery — lets checkout demand nothing up front
+// while still giving the buyer a way to get the code emailed once they've
+// seen it. Doesn't re-issue anything; just re-sends the existing code.
+export async function emailGiftCardCode(
+  code: string,
+  amount: number,
+  email: string
+): Promise<{ ok: boolean; message: string }> {
+  if (!email || !email.includes("@")) {
+    return { ok: false, message: "Enter a valid email address." };
+  }
+  const copy = giftCardPurchasedEmail({ code, amount });
+  const res = await sendEmail({ to: email, ...copy });
+  return res.ok
+    ? { ok: true, message: `Sent to ${email}.` }
+    : { ok: false, message: res.error ?? "Couldn't send that email." };
 }
 
 export async function refundGiftCard(
