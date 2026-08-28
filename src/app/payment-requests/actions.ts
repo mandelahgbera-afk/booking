@@ -2,6 +2,7 @@
 
 import { createPublicClient } from "@/lib/supabase/public";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { notifyAdminOfTransaction } from "@/lib/email/notify-admin";
 
 // Shared by booking checkout and gift-card checkout — both submit into the
 // same manual-review queue an admin works through at /admin/transactions.
@@ -29,6 +30,17 @@ export async function submitPaymentRequest(
       p_metadata: metadata,
     });
     if (error || !data) return { ok: false, message: error?.message ?? "Failed to submit for review." };
+
+    // Alert the admin that something is waiting on them, so the queue
+    // doesn't depend on someone having /admin/transactions open.
+    await notifyAdminOfTransaction({
+      kind: "review_requested",
+      transactionType: type,
+      amount,
+      customerEmail: normalizedEmail || null,
+      method: (metadata.method as string) ?? null,
+    });
+
     return { ok: true, id: data };
   } catch {
     return { ok: false, message: "Failed to submit for review." };

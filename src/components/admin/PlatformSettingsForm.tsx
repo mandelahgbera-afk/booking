@@ -22,6 +22,7 @@ export const PlatformSettingsForm = ({ settings }: { settings: PlatformSettingsR
   const [form, setForm] = useState(settings);
   const [pending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<{ ok: boolean; message: string } | null>(null);
+  const [adminEmail, setAdminEmail] = useState(settings.admin_notification_email ?? "");
 
   const save = (patch: Partial<PlatformSettingsRow>) => {
     const next = { ...form, ...patch };
@@ -167,6 +168,39 @@ export const PlatformSettingsForm = ({ settings }: { settings: PlatformSettingsR
             onChange={(v) => save({ email_notifications_enabled: v })}
           />
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6">
+        <h2 className="text-sm font-semibold text-slate-900">Admin notifications</h2>
+        <p className="mt-1 text-xs text-slate-400">
+          Where operational alerts go when a transaction is initiated — a payment landing in the
+          review queue, a gift card bought, a booking confirmed, a payment declined. Leave blank to
+          send none.
+        </p>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <input
+            type="email"
+            value={adminEmail}
+            disabled={pending}
+            onChange={(e) => setAdminEmail(e.target.value)}
+            placeholder="ops@yourcompany.com"
+            className="min-w-0 flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-orange-400"
+          />
+          <button
+            type="button"
+            disabled={pending || adminEmail === (form.admin_notification_email ?? "")}
+            onClick={() => save({ admin_notification_email: adminEmail.trim() || null })}
+            className="shrink-0 rounded-xl gradient-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            Save
+          </button>
+        </div>
+        {form.admin_notification_email && (
+          <p className="mt-2 text-xs text-slate-400">
+            Currently alerting{" "}
+            <span className="font-medium text-slate-600">{form.admin_notification_email}</span>.
+          </p>
+        )}
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6">

@@ -13,3 +13,4 @@ export { giftCardRedeemedEmail } from "./giftCardRedeemed";
 export { contactAutoReplyEmail } from "./contactAutoReply";
 export { flightDelayedEmail } from "./flightDelayed";
 export { transactionFailedEmail } from "./transactionFailed";
+export { adminTransactionAlertEmail, type AdminAlertKind } from "./adminTransactionAlert";

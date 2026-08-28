@@ -292,6 +292,7 @@ const defaultPlatformSettings: PlatformSettingsRow = {
   booking_enabled: true,
   service_fee_percent: 3.5,
   email_notifications_enabled: true,
+  admin_notification_email: null,
   updated_at: new Date().toISOString(),
 };
 

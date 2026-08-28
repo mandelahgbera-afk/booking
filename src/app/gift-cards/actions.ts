@@ -9,6 +9,7 @@ import { resolvePaymentOutcome } from "@/lib/payment-simulation";
 import { WALLET_EMAIL_COOKIE, WALLET_MOCK_BALANCE_COOKIE } from "@/lib/wallet";
 import { sendEmail } from "@/lib/email/send";
 import { giftCardPurchasedEmail, giftCardRedeemedEmail, transactionFailedEmail } from "@/lib/email/templates";
+import { notifyAdminOfTransaction } from "@/lib/email/notify-admin";
 
 const siteUrl = process.env.NEXT_SITE_URL || "http://localhost:3000";
 
@@ -58,6 +59,13 @@ export async function purchaseGiftCard(
       });
       await sendEmail({ to: buyerEmail, ...copy });
     }
+    await notifyAdminOfTransaction({
+      kind: "payment_failed",
+      transactionType: "gift_card",
+      amount,
+      customerEmail: canEmail ? buyerEmail : null,
+      method,
+    });
     return {
       ok: false,
       message: canEmail
@@ -116,6 +124,15 @@ export async function purchaseGiftCard(
     (buyerResult && !buyerResult.ok) || (giftResult && !giftResult.ok)
       ? `Your card was issued, but the email didn't send: ${buyerResult?.error ?? giftResult?.error ?? "unknown error"}`
       : undefined;
+
+  await notifyAdminOfTransaction({
+    kind: "gift_card_purchased",
+    transactionType: "gift_card",
+    amount: finalAmount,
+    customerEmail: canEmail ? buyerEmail : null,
+    method,
+    reference: code,
+  });
 
   return { ok: true, code, amount: finalAmount, emailWarning };
 }

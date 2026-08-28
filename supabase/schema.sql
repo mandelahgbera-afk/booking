@@ -277,8 +277,16 @@ create table if not exists public.platform_settings (
   -- conditional controller in front of these triggers, standing in for the
   -- real approval/business logic a production system would have.
   email_notifications_enabled boolean not null default true,
+  -- Where operational alerts go when a transaction is initiated (a payment
+  -- lands in the review queue, a gift card is bought, a booking confirms).
+  -- Null/blank simply means nobody is alerted — never an error.
+  admin_notification_email text,
   updated_at timestamptz not null default now()
 );
+
+-- Idempotent — picks up admin_notification_email on a project that already
+-- ran an earlier version of this file.
+alter table public.platform_settings add column if not exists admin_notification_email text;
 
 -- Idempotent — picks up new columns/constraint changes on a project that
 -- already ran an earlier version of this file, without needing a reset.

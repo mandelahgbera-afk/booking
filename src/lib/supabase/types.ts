@@ -113,6 +113,7 @@ export type PlatformSettingsRow = {
   booking_enabled: boolean;
   service_fee_percent: number;
   email_notifications_enabled: boolean;
+  admin_notification_email: string | null;
   updated_at: string;
 };
 

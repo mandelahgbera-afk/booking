@@ -3,6 +3,7 @@
 import { sendEmail } from "@/lib/email/send";
 import { bookingConfirmationEmail, paymentReceiptEmail, transactionFailedEmail } from "@/lib/email/templates";
 import { createPublicClient } from "@/lib/supabase/public";
+import { notifyAdminOfTransaction } from "@/lib/email/notify-admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Passenger } from "@/components/booking/PassengerForm";
 import type { FlightOffer } from "@/lib/mock-data";
@@ -93,6 +94,15 @@ export async function confirmBooking({
     }
   }
 
+  await notifyAdminOfTransaction({
+    kind: "booking_confirmed",
+    transactionType: "booking",
+    amount: total,
+    customerEmail: primary?.email ?? null,
+    method,
+    reference,
+  });
+
   return { reference, emailWarning };
 }
 
@@ -119,6 +129,13 @@ export async function sendBookingFailedEmail({
     retryMethod: "wallet",
   });
   await sendEmail({ to: primary.email, ...copy });
+
+  await notifyAdminOfTransaction({
+    kind: "payment_failed",
+    transactionType: "booking",
+    amount: total,
+    customerEmail: primary.email,
+  });
 }
 
 export type BookingLookup =
