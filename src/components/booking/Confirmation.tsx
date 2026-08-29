@@ -48,7 +48,11 @@ export const Confirmation = ({
   }[outcome];
 
   const Icon = statusMeta.icon;
-  const ModeIcon = offer.mode === "train" ? TrainFront : offer.mode === "bus" ? Bus : PlaneTakeoff;
+  const mode = offer.mode ?? "flight";
+  const ModeIcon = mode === "train" ? TrainFront : mode === "bus" ? Bus : PlaneTakeoff;
+  // A coach trip is not a "Flight" — these labels follow the booked mode.
+  const modeNoun = mode === "train" ? "Train" : mode === "bus" ? "Bus" : "Flight";
+  const modeHref = mode === "train" ? "/trains" : mode === "bus" ? "/buses" : "/flights";
 
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center gap-6 py-10 text-center">
@@ -94,7 +98,7 @@ export const Confirmation = ({
           <div className="border-t border-white/10 bg-white/5 px-5 py-4">
             <div className="grid grid-cols-3 gap-2 text-left text-xs">
               <div>
-                <div className="text-white/40">Flight</div>
+                <div className="text-white/40">{modeNoun}</div>
                 <div className="font-semibold">{offer.flightNumber}</div>
               </div>
               <div>
@@ -125,9 +129,9 @@ export const Confirmation = ({
       </div>
 
       <div className="flex w-full gap-3">
-        <Link href="/flights" className="flex-1">
+        <Link href={modeHref} className="flex-1">
           <Button variant="secondary" className="w-full">
-            Book another flight
+            Book another {modeNoun.toLowerCase()}
           </Button>
         </Link>
         <Link href="/" className="flex-1">

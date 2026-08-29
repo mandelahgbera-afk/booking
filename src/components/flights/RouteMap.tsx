@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Map, { Marker, Source, Layer, NavigationControl, type MapRef } from "react-map-gl/mapbox";
 import type { LayerProps, MapEvent } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -70,6 +70,41 @@ export const RouteMap = ({ offer }: { offer: FlightOffer }) => {
   const { from, to } = offer;
   const ModeIcon = MODE_ICON[mode];
 
+  // Mapbox GL needs WebGL. Where it's unavailable (hardened browsers,
+  // some embedded webviews, blocking extensions) the canvas mounts but
+  // paints nothing — a blank grey box with no explanation. Detect that up
+  // front, and also catch runtime failures via onError, so this component
+  // always renders something meaningful instead of dead space.
+  const [failed, setFailed] = useState(false);
+  const loadedRef = useRef(false);
+
+  // The commonest real-world failure isn't WebGL — it's the Mapbox tile CDN
+  // being blocked (privacy extensions and ad blockers routinely do this),
+  // which leaves a mounted canvas painting nothing at all. Mapbox surfaces
+  // no reliable event for that, so treat "style never finished loading" as
+  // the signal and fall back rather than leave a blank panel.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!loadedRef.current) setFailed(true);
+    }, 6000);
+    return () => clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    // Deferred a frame so this reads as subscribing to an external
+    // capability rather than a synchronous setState cascade during commit.
+    const id = requestAnimationFrame(() => {
+      let supported = false;
+      try {
+        const probe = document.createElement("canvas");
+        supported = Boolean(probe.getContext("webgl") || probe.getContext("experimental-webgl"));
+      } catch {
+        supported = false;
+      }
+      if (!supported) setFailed(true);
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   const geojson = useMemo(
     () => ({
       type: "Feature" as const,
@@ -100,6 +135,7 @@ export const RouteMap = ({ offer }: { offer: FlightOffer }) => {
   );
 
   const onLoad = useCallback((e: MapEvent) => {
+    loadedRef.current = true;
     const map = e.target;
     // setPaintProperty's property name is a huge literal union; these are
     // valid members but only known as string here, so the call is narrowed
@@ -138,13 +174,12 @@ export const RouteMap = ({ offer }: { offer: FlightOffer }) => {
     );
   }, [from.lng, from.lat, to.lng, to.lat]);
 
-  if (!MAPBOX_TOKEN) {
-    return (
-      <div className="flex h-full min-h-[280px] w-full flex-col items-center justify-center gap-2 rounded-3xl border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-400">
-        <ModeIcon size={22} />
-        Set NEXT_PUBLIC_MAPBOX_TOKEN to preview the route map
-      </div>
-    );
+  const summary = (
+    <RouteSummary offer={offer} mode={mode} ModeIcon={ModeIcon} />
+  );
+
+  if (!MAPBOX_TOKEN || failed) {
+    return <StaticRoute offer={offer} mode={mode} summary={summary} />;
   }
 
   return (
@@ -153,6 +188,7 @@ export const RouteMap = ({ offer }: { offer: FlightOffer }) => {
         ref={mapRef}
         mapboxAccessToken={MAPBOX_TOKEN}
         onLoad={onLoad}
+        onError={() => setFailed(true)}
         initialViewState={{
           longitude: (from.lng + to.lng) / 2,
           latitude: (from.lat + to.lat) / 2,
@@ -175,27 +211,80 @@ export const RouteMap = ({ offer }: { offer: FlightOffer }) => {
         </Marker>
       </Map>
 
-      {/* Route summary — turns a decorative basemap into something that
-          actually tells you what you're looking at. */}
-      <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-white/90 px-4 py-2.5 shadow-sm backdrop-blur-sm">
-        <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
-          <ModeIcon size={15} className="text-orange-500" />
-          {from.city} → {to.city}
-        </span>
-        <span className="flex items-center gap-1 text-xs text-slate-400">
-          <Clock size={12} />
-          {formatDuration(offer.durationMins)}
-        </span>
-        <span className="text-xs text-slate-400">
-          {offer.stops === 0 ? "Nonstop" : `${offer.stops} stop`}
-        </span>
-        <span className="ml-auto text-sm font-bold text-slate-900">
-          from {formatCurrency(offer.price)}
-        </span>
-      </div>
+      {summary}
     </div>
   );
 };
+
+// Shared by the live map and the static fallback so the two never drift.
+const RouteSummary = ({
+  offer,
+  mode,
+  ModeIcon,
+}: {
+  offer: FlightOffer;
+  mode: NonNullable<FlightOffer["mode"]>;
+  ModeIcon: (typeof MODE_ICON)[keyof typeof MODE_ICON];
+}) => (
+  <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-white/90 px-4 py-2.5 shadow-sm backdrop-blur-sm">
+    <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+      <ModeIcon size={15} className="text-orange-500" />
+      {offer.from.city} &rarr; {offer.to.city}
+    </span>
+    <span className="flex items-center gap-1 text-xs text-slate-400">
+      <Clock size={12} />
+      {formatDuration(offer.durationMins)}
+    </span>
+    <span className="text-xs text-slate-400">
+      {offer.stops === 0 ? "Nonstop" : `${offer.stops} stop`}
+    </span>
+    <span className="ml-auto text-sm font-bold text-slate-900">
+      from {formatCurrency(offer.price)}
+    </span>
+    <span className="sr-only">{mode} route</span>
+  </div>
+);
+
+// Dependency-free branded route visual. Not a geographic map — it makes no
+// such claim — just an honest schematic so the panel still communicates the
+// route when the real map can't draw.
+const StaticRoute = ({
+  offer,
+  mode,
+  summary,
+}: {
+  offer: FlightOffer;
+  mode: NonNullable<FlightOffer["mode"]>;
+  summary: React.ReactNode;
+}) => (
+  <div className="relative h-full min-h-[300px] w-full overflow-hidden rounded-3xl border border-slate-200 bg-slate-50">
+    {summary}
+    <svg viewBox="0 0 400 150" className="h-full w-full" preserveAspectRatio="xMidYMid meet">
+      <path
+        d={`M 45 108 Q 200 ${mode === "flight" ? 28 : 82} 355 108`}
+        fill="none"
+        stroke="#f97316"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        {...(mode === "flight" ? { strokeDasharray: "1 6" } : {})}
+      />
+      {[
+        { x: 45, code: offer.from.code, city: offer.from.city, anchor: "start" as const },
+        { x: 355, code: offer.to.code, city: offer.to.city, anchor: "end" as const },
+      ].map((p) => (
+        <g key={p.code}>
+          <circle cx={p.x} cy={108} r={5.5} fill="#f97316" stroke="#fff" strokeWidth="2.5" />
+          <text x={p.x} y={130} textAnchor="middle" className="fill-slate-900" fontSize="13" fontWeight="700">
+            {p.code}
+          </text>
+          <text x={p.x} y={144} textAnchor="middle" className="fill-slate-400" fontSize="10">
+            {p.city}
+          </text>
+        </g>
+      ))}
+    </svg>
+  </div>
+);
 
 const StopPin = ({ code, city }: { code: string; city: string }) => (
   <div className="flex flex-col items-center">

@@ -66,6 +66,7 @@ export async function confirmBooking({
       reference,
       airline: offer.airline.name,
       flightNumber: offer.flightNumber,
+      mode: offer.mode ?? "flight",
       from: offer.from.code,
       to: offer.to.code,
       departTime: offer.departTime,

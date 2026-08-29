@@ -116,6 +116,7 @@ export const BookingFlow = ({
                 arriveTime: offer.arriveTime,
                 airline: offer.airline.name,
                 flightNumber: offer.flightNumber,
+                mode: offer.mode ?? "flight",
               });
               if (res.ok && res.id) setReviewRequestId(res.id);
             }}

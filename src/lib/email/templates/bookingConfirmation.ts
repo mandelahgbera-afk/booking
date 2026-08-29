@@ -1,11 +1,15 @@
 import { renderEmailShell, renderInfoCard, escapeHtml } from "../shell";
 import { formatCurrency } from "@/lib/utils";
 
+const MODE_NOUN = { flight: "Flight", train: "Train", bus: "Coach" } as const;
+const MODE_PATH = { flight: "/flights", train: "/trains", bus: "/buses" } as const;
+
 export function bookingConfirmationEmail({
   passengerName,
   reference,
   airline,
   flightNumber,
+  mode = "flight",
   from,
   to,
   departTime,
@@ -19,6 +23,9 @@ export function bookingConfirmationEmail({
   reference: string;
   airline: string;
   flightNumber: string;
+  // Rail and coach bookings run through this same template — without it a
+  // bus trip is labelled "Flight" and links to the wrong search page.
+  mode?: "flight" | "train" | "bus";
   from: string; // "JFK"
   to: string; // "LHR"
   departTime: string;
@@ -41,14 +48,14 @@ export function bookingConfirmationEmail({
         ${renderInfoCard([
           { label: "Reference", value: reference },
           { label: "Route", value: `${from} → ${to}` },
-          { label: "Flight", value: `${airline} · ${flightNumber}` },
+          { label: MODE_NOUN[mode], value: `${airline} · ${flightNumber}` },
           { label: "Departs", value: departTime },
           { label: "Arrives", value: arriveTime },
           { label: "Cabin", value: cabin },
           { label: "Seats", value: seats.join(", ") || "—" },
           { label: "Total paid", value: formatCurrency(total) },
         ])}`,
-      button: { label: "View booking", url: `${siteUrl ?? "https://airfly.example"}/flights` },
+      button: { label: "View booking", url: `${siteUrl ?? "https://airfly.example"}${MODE_PATH[mode]}` },
       footerNote: "Need to change or cancel? Manage this booking from your dashboard, or reply here.",
       siteUrl,
     }),

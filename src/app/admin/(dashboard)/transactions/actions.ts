@@ -24,6 +24,7 @@ type BookingRequestMetadata = {
   arriveTime: string;
   airline: string;
   flightNumber: string;
+  mode?: "flight" | "train" | "bus";
 };
 
 type GiftCardRequestMetadata = {
@@ -120,6 +121,7 @@ export async function resolvePaymentRequestAction(
           cabin: m.cabin,
           seats: m.seats,
           total: amount,
+          mode: m.mode ?? "flight",
         });
         if (canNotify) {
           const emailResult = await sendEmail({ to: email, ...copy });
