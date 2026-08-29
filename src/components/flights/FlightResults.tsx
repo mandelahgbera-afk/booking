@@ -54,13 +54,16 @@ export const FlightResults = ({
       });
   }, [offers, filters, sort]);
 
-  const first = offers[0];
+  // Track the top result AFTER filtering and sorting, so the map reflects
+  // what the traveler is actually looking at — it previously pinned the
+  // unfiltered offers[0], which could show a route absent from the list.
+  const featured = filtered[0];
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24">
-      {first && (
+      {featured && (
         <div className="mb-8">
-          <RouteMap from={first.from} to={first.to} />
+          <RouteMap offer={featured} />
         </div>
       )}
 
