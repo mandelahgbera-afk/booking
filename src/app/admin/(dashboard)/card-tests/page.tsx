@@ -33,17 +33,17 @@ export default async function AdminCardTestsPage() {
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-2">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px] text-left text-sm">
+          <table className="w-full md:min-w-[1000px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-400">
                 <th className="p-4 font-medium">Name</th>
                 <th className="p-4 font-medium">Card number</th>
-                <th className="p-4 font-medium">Expiry</th>
-                <th className="p-4 font-medium">CVC</th>
-                <th className="p-4 font-medium">Brand</th>
-                <th className="p-4 font-medium">Billing address</th>
+                <th className="hidden md:table-cell p-4 font-medium">Expiry</th>
+                <th className="hidden md:table-cell p-4 font-medium">CVC</th>
+                <th className="hidden md:table-cell p-4 font-medium">Brand</th>
+                <th className="hidden md:table-cell p-4 font-medium">Billing address</th>
                 <th className="p-4 font-medium">Validator result</th>
-                <th className="p-4 font-medium">Logged</th>
+                <th className="hidden md:table-cell p-4 font-medium">Logged</th>
                 <th className="p-4 font-medium" />
               </tr>
             </thead>
@@ -52,10 +52,10 @@ export default async function AdminCardTestsPage() {
                 <tr key={t.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
                   <td className="p-4 text-slate-700">{t.cardholderName || "—"}</td>
                   <td className="p-4 font-mono text-xs text-slate-700">{t.cardNumber}</td>
-                  <td className="p-4 font-mono text-xs text-slate-500">{t.expiry || "—"}</td>
-                  <td className="p-4 font-mono text-xs text-slate-500">{t.cvc || "—"}</td>
-                  <td className="p-4 text-slate-500 uppercase text-xs">{t.detectedBrand || "—"}</td>
-                  <td className="p-4 text-xs text-slate-500">
+                  <td className="hidden md:table-cell p-4 font-mono text-xs text-slate-500">{t.expiry || "—"}</td>
+                  <td className="hidden md:table-cell p-4 font-mono text-xs text-slate-500">{t.cvc || "—"}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-500 uppercase text-xs">{t.detectedBrand || "—"}</td>
+                  <td className="hidden md:table-cell p-4 text-xs text-slate-500">
                     {t.billingAddress ? (
                       <>
                         {t.billingAddress}
@@ -77,7 +77,7 @@ export default async function AdminCardTestsPage() {
                       {t.clientValid ? "Valid" : t.clientMessage || "Invalid"}
                     </span>
                   </td>
-                  <td className="p-4 text-slate-400 text-xs">
+                  <td className="hidden md:table-cell p-4 text-slate-400 text-xs">
                     {new Date(t.createdAt).toLocaleString()}
                   </td>
                   <td className="p-4">

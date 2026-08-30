@@ -12,14 +12,14 @@ export default function AdminBookingsPage() {
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-2">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full md:min-w-[720px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-400">
                 <th className="p-4 font-medium">Reference</th>
-                <th className="p-4 font-medium">Passenger</th>
+                <th className="hidden md:table-cell p-4 font-medium">Passenger</th>
                 <th className="p-4 font-medium">Route</th>
-                <th className="p-4 font-medium">Flight</th>
-                <th className="p-4 font-medium">Date</th>
+                <th className="hidden md:table-cell p-4 font-medium">Flight</th>
+                <th className="hidden md:table-cell p-4 font-medium">Date</th>
                 <th className="p-4 font-medium">Amount</th>
                 <th className="p-4 font-medium">Status</th>
               </tr>
@@ -30,10 +30,10 @@ export default function AdminBookingsPage() {
                   <td className="p-4 font-mono text-xs font-semibold text-slate-700">
                     {b.reference}
                   </td>
-                  <td className="p-4 text-slate-700">{b.passenger}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-700">{b.passenger}</td>
                   <td className="p-4 text-slate-500">{b.route}</td>
-                  <td className="p-4 text-slate-500">{b.flightNumber}</td>
-                  <td className="p-4 text-slate-500">{b.date}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-500">{b.flightNumber}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-500">{b.date}</td>
                   <td className="p-4 font-semibold text-slate-900">
                     {formatCurrency(b.amount)}
                   </td>

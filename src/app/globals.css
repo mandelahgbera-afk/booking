@@ -118,3 +118,16 @@
   90%  { opacity: 1; }
   100% { top: calc(100% - 1.5rem); opacity: 0; }
 }
+
+/* iOS Safari zooms the whole page in whenever a focused field's text is
+   under 16px, which on a phone leaves the layout shoved sideways and
+   looking broken. Fields are 14px by design on desktop, so lift them to
+   16px only on small screens — the visual difference is negligible, the
+   behavioural one is not. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

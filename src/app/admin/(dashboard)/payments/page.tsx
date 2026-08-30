@@ -20,13 +20,13 @@ export default function AdminPaymentsPage() {
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-2">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px] text-left text-sm">
+          <table className="w-full md:min-w-[600px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-400">
                 <th className="p-4 font-medium">Booking ref</th>
-                <th className="p-4 font-medium">Method</th>
+                <th className="hidden md:table-cell p-4 font-medium">Method</th>
                 <th className="p-4 font-medium">Amount</th>
-                <th className="p-4 font-medium">Date</th>
+                <th className="hidden md:table-cell p-4 font-medium">Date</th>
                 <th className="p-4 font-medium">Status</th>
               </tr>
             </thead>
@@ -36,11 +36,11 @@ export default function AdminPaymentsPage() {
                   <td className="p-4 font-mono text-xs font-semibold text-slate-700">
                     {p.reference}
                   </td>
-                  <td className="p-4 text-slate-500">{METHOD_LABEL[p.method]}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-500">{METHOD_LABEL[p.method]}</td>
                   <td className="p-4 font-semibold text-slate-900">
                     {formatCurrency(p.amount)}
                   </td>
-                  <td className="p-4 text-slate-500">{p.date}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-500">{p.date}</td>
                   <td className="p-4">
                     <StatusBadge status={p.status} />
                   </td>

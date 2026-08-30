@@ -11,14 +11,14 @@ export default function AdminUsersPage() {
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-2">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
+          <table className="w-full md:min-w-[640px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-400">
                 <th className="p-4 font-medium">Name</th>
                 <th className="p-4 font-medium">Email</th>
                 <th className="p-4 font-medium">Role</th>
-                <th className="p-4 font-medium">Bookings</th>
-                <th className="p-4 font-medium">Joined</th>
+                <th className="hidden md:table-cell p-4 font-medium">Bookings</th>
+                <th className="hidden md:table-cell p-4 font-medium">Joined</th>
               </tr>
             </thead>
             <tbody>
@@ -29,8 +29,8 @@ export default function AdminUsersPage() {
                   <td className="p-4">
                     <StatusBadge status={u.role === "admin" ? "confirmed" : "scheduled"} />
                   </td>
-                  <td className="p-4 text-slate-500">{u.bookings}</td>
-                  <td className="p-4 text-slate-500">{u.joined}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-500">{u.bookings}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-500">{u.joined}</td>
                 </tr>
               ))}
             </tbody>

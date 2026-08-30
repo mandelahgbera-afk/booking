@@ -25,17 +25,17 @@ export default async function AdminFlightsPage() {
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-2">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] text-left text-sm">
+          <table className="w-full md:min-w-[860px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-400">
                 <th className="p-4 font-medium">Route</th>
-                <th className="p-4 font-medium">Mode</th>
-                <th className="p-4 font-medium">Operator</th>
+                <th className="hidden md:table-cell p-4 font-medium">Mode</th>
+                <th className="hidden md:table-cell p-4 font-medium">Operator</th>
                 <th className="p-4 font-medium">From → To</th>
-                <th className="p-4 font-medium">Departs</th>
-                <th className="p-4 font-medium">Cabin</th>
+                <th className="hidden md:table-cell p-4 font-medium">Departs</th>
+                <th className="hidden md:table-cell p-4 font-medium">Cabin</th>
                 <th className="p-4 font-medium">Price</th>
-                <th className="p-4 font-medium">Seats left</th>
+                <th className="hidden md:table-cell p-4 font-medium">Seats left</th>
                 <th className="p-4 font-medium">Status</th>
                 <th className="p-4 font-medium" />
               </tr>
@@ -44,15 +44,15 @@ export default async function AdminFlightsPage() {
               {routes.map((r) => (
                 <tr key={r.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
                   <td className="p-4 font-mono text-xs font-semibold text-slate-700">{r.flightNumber}</td>
-                  <td className="p-4 text-slate-500">{MODE_LABEL[r.mode] ?? r.mode}</td>
-                  <td className="p-4 text-slate-500">{r.airline.name}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-500">{MODE_LABEL[r.mode] ?? r.mode}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-500">{r.airline.name}</td>
                   <td className="p-4 text-slate-700">
                     {r.from.code} → {r.to.code}
                   </td>
-                  <td className="p-4 text-slate-500">{new Date(r.departAt).toLocaleString()}</td>
-                  <td className="p-4 text-slate-500">{r.cabin}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-500">{new Date(r.departAt).toLocaleString()}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-500">{r.cabin}</td>
                   <td className="p-4 font-semibold text-slate-900">{formatCurrency(r.price)}</td>
-                  <td className="p-4 text-slate-500">
+                  <td className="hidden md:table-cell p-4 text-slate-500">
                     {r.seatsLeft} / {r.seatsTotal}
                   </td>
                   <td className="p-4">

@@ -20,14 +20,14 @@ export default async function AdminGiftCardsPage() {
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-2">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full md:min-w-[760px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-400">
                 <th className="p-4 font-medium">Code</th>
                 <th className="p-4 font-medium">Amount</th>
-                <th className="p-4 font-medium">Issued by</th>
-                <th className="p-4 font-medium">Recipient</th>
-                <th className="p-4 font-medium">Redeemed by</th>
+                <th className="hidden md:table-cell p-4 font-medium">Issued by</th>
+                <th className="hidden md:table-cell p-4 font-medium">Recipient</th>
+                <th className="hidden md:table-cell p-4 font-medium">Redeemed by</th>
                 <th className="p-4 font-medium">Status</th>
                 <th className="p-4 font-medium" />
               </tr>
@@ -37,9 +37,9 @@ export default async function AdminGiftCardsPage() {
                 <tr key={c.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
                   <td className="p-4 font-mono text-xs font-semibold text-slate-700">{c.code}</td>
                   <td className="p-4 font-semibold text-slate-900">{formatCurrency(c.amount)}</td>
-                  <td className="p-4 text-slate-500">{c.issuedBy}</td>
-                  <td className="p-4 text-slate-500">{c.recipientEmail ?? "—"}</td>
-                  <td className="p-4 text-slate-500">{c.redeemedEmail ?? "—"}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-500">{c.issuedBy}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-500">{c.recipientEmail ?? "—"}</td>
+                  <td className="hidden md:table-cell p-4 text-slate-500">{c.redeemedEmail ?? "—"}</td>
                   <td className="p-4">
                     <StatusBadge
                       status={
