@@ -7,7 +7,7 @@ export type Destination = {
   iata: string;
   image: string;
   fromPrice: number;
-  region: "USA" | "Asia" | "UK";
+  region: "North America" | "South America" | "Europe" | "Africa" | "Asia" | "Middle East" | "Oceania";
 };
 
 export const destinations: Destination[] = [
@@ -18,7 +18,7 @@ export const destinations: Destination[] = [
     image:
       "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=1200&auto=format&fit=crop",
     fromPrice: 189,
-    region: "USA",
+    region: "North America",
   },
   {
     city: "Los Angeles",
@@ -27,7 +27,7 @@ export const destinations: Destination[] = [
     image:
       "https://images.unsplash.com/photo-1444723121867-7a241cacace9?q=80&w=1200&auto=format&fit=crop",
     fromPrice: 219,
-    region: "USA",
+    region: "North America",
   },
   {
     city: "Tokyo",
@@ -63,7 +63,7 @@ export const destinations: Destination[] = [
     image:
       "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1200&auto=format&fit=crop",
     fromPrice: 349,
-    region: "UK",
+    region: "Europe",
   },
   {
     city: "Edinburgh",
@@ -72,7 +72,7 @@ export const destinations: Destination[] = [
     image:
       "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?q=80&w=1200&auto=format&fit=crop",
     fromPrice: 379,
-    region: "UK",
+    region: "Europe",
   },
   {
     city: "Dubai",
@@ -90,40 +90,91 @@ export type Airport = {
   city: string;
   name: string;
   country: string;
-  region: "USA" | "Asia" | "UK" | "Other";
+  region: "North America" | "South America" | "Europe" | "Africa" | "Asia" | "Middle East" | "Oceania";
   lat: number;
   lng: number;
 };
 
 export const airports: Airport[] = [
-  { code: "JFK", city: "New York", name: "John F. Kennedy Intl", country: "USA", region: "USA", lat: 40.6413, lng: -73.7781 },
-  { code: "LAX", city: "Los Angeles", name: "Los Angeles Intl", country: "USA", region: "USA", lat: 33.9416, lng: -118.4085 },
-  { code: "SFO", city: "San Francisco", name: "San Francisco Intl", country: "USA", region: "USA", lat: 37.6213, lng: -122.3790 },
-  { code: "ORD", city: "Chicago", name: "O'Hare Intl", country: "USA", region: "USA", lat: 41.9742, lng: -87.9073 },
-  { code: "MIA", city: "Miami", name: "Miami Intl", country: "USA", region: "USA", lat: 25.7959, lng: -80.2870 },
-  { code: "LHR", city: "London", name: "Heathrow", country: "UK", region: "UK", lat: 51.4700, lng: -0.4543 },
-  { code: "LGW", city: "London", name: "Gatwick", country: "UK", region: "UK", lat: 51.1537, lng: -0.1821 },
-  { code: "EDI", city: "Edinburgh", name: "Edinburgh Airport", country: "UK", region: "UK", lat: 55.9500, lng: -3.3725 },
-  { code: "MAN", city: "Manchester", name: "Manchester Airport", country: "UK", region: "UK", lat: 53.3537, lng: -2.2750 },
+  { code: "JFK", city: "New York", name: "John F. Kennedy Intl", country: "USA", region: "North America", lat: 40.6413, lng: -73.7781 },
+  { code: "LAX", city: "Los Angeles", name: "Los Angeles Intl", country: "USA", region: "North America", lat: 33.9416, lng: -118.4085 },
+  { code: "SFO", city: "San Francisco", name: "San Francisco Intl", country: "USA", region: "North America", lat: 37.6213, lng: -122.3790 },
+  { code: "ORD", city: "Chicago", name: "O'Hare Intl", country: "USA", region: "North America", lat: 41.9742, lng: -87.9073 },
+  { code: "MIA", city: "Miami", name: "Miami Intl", country: "USA", region: "North America", lat: 25.7959, lng: -80.2870 },
+  { code: "LHR", city: "London", name: "Heathrow", country: "UK", region: "Europe", lat: 51.4700, lng: -0.4543 },
+  { code: "LGW", city: "London", name: "Gatwick", country: "UK", region: "Europe", lat: 51.1537, lng: -0.1821 },
+  { code: "EDI", city: "Edinburgh", name: "Edinburgh Airport", country: "UK", region: "Europe", lat: 55.9500, lng: -3.3725 },
+  { code: "MAN", city: "Manchester", name: "Manchester Airport", country: "UK", region: "Europe", lat: 53.3537, lng: -2.2750 },
   { code: "HND", city: "Tokyo", name: "Haneda", country: "Japan", region: "Asia", lat: 35.5494, lng: 139.7798 },
   { code: "NRT", city: "Tokyo", name: "Narita Intl", country: "Japan", region: "Asia", lat: 35.7647, lng: 140.3864 },
   { code: "SIN", city: "Singapore", name: "Changi Airport", country: "Singapore", region: "Asia", lat: 1.3644, lng: 103.9915 },
   { code: "DPS", city: "Bali", name: "Ngurah Rai Intl", country: "Indonesia", region: "Asia", lat: -8.7482, lng: 115.1672 },
-  { code: "DXB", city: "Dubai", name: "Dubai Intl", country: "UAE", region: "Asia", lat: 25.2532, lng: 55.3657 },
+  { code: "DXB", city: "Dubai", name: "Dubai Intl", country: "UAE", region: "Middle East", lat: 25.2532, lng: 55.3657 },
   { code: "HKG", city: "Hong Kong", name: "Hong Kong Intl", country: "China", region: "Asia", lat: 22.3080, lng: 113.9185 },
   { code: "ICN", city: "Seoul", name: "Incheon Intl", country: "South Korea", region: "Asia", lat: 37.4602, lng: 126.4407 },
   // Rail/coach terminals — same table as airports since bookings just need
   // a "location with a code + coordinates", regardless of travel mode.
-  { code: "BER", city: "Berlin", name: "Berlin Hauptbahnhof", country: "Germany", region: "Other", lat: 52.5251, lng: 13.3694 },
-  { code: "MUC", city: "Munich", name: "München Hauptbahnhof", country: "Germany", region: "Other", lat: 48.1402, lng: 11.5586 },
-  { code: "PAR", city: "Paris", name: "Gare du Nord", country: "France", region: "Other", lat: 48.8809, lng: 2.3553 },
-  { code: "LDN", city: "London", name: "St Pancras International", country: "UK", region: "UK", lat: 51.5308, lng: -0.1238 },
-  { code: "FRA", city: "Frankfurt", name: "Frankfurt Hauptbahnhof", country: "Germany", region: "Other", lat: 50.1070, lng: 8.6632 },
-  { code: "BRU", city: "Brussels", name: "Bruxelles-Midi", country: "Belgium", region: "Other", lat: 50.8357, lng: 4.3326 },
-  { code: "VIE", city: "Vienna", name: "Wien Hauptbahnhof", country: "Austria", region: "Other", lat: 48.1858, lng: 16.3764 },
-  { code: "HAM", city: "Hamburg", name: "Hamburg Hauptbahnhof", country: "Germany", region: "Other", lat: 53.5528, lng: 10.0067 },
-  { code: "CGN", city: "Cologne", name: "Köln Hauptbahnhof", country: "Germany", region: "Other", lat: 50.9432, lng: 6.9583 },
-  { code: "AMS", city: "Amsterdam", name: "Amsterdam Centraal", country: "Netherlands", region: "Other", lat: 52.3791, lng: 4.9003 },
+  { code: "BER", city: "Berlin", name: "Berlin Hauptbahnhof", country: "Germany", region: "Europe", lat: 52.5251, lng: 13.3694 },
+  { code: "MUC", city: "Munich", name: "München Hauptbahnhof", country: "Germany", region: "Europe", lat: 48.1402, lng: 11.5586 },
+  { code: "PAR", city: "Paris", name: "Gare du Nord", country: "France", region: "Europe", lat: 48.8809, lng: 2.3553 },
+  { code: "LDN", city: "London", name: "St Pancras International", country: "UK", region: "Europe", lat: 51.5308, lng: -0.1238 },
+  { code: "FRA", city: "Frankfurt", name: "Frankfurt Hauptbahnhof", country: "Germany", region: "Europe", lat: 50.1070, lng: 8.6632 },
+  { code: "BRU", city: "Brussels", name: "Bruxelles-Midi", country: "Belgium", region: "Europe", lat: 50.8357, lng: 4.3326 },
+  { code: "VIE", city: "Vienna", name: "Wien Hauptbahnhof", country: "Austria", region: "Europe", lat: 48.1858, lng: 16.3764 },
+  { code: "HAM", city: "Hamburg", name: "Hamburg Hauptbahnhof", country: "Germany", region: "Europe", lat: 53.5528, lng: 10.0067 },
+  { code: "CGN", city: "Cologne", name: "Köln Hauptbahnhof", country: "Germany", region: "Europe", lat: 50.9432, lng: 6.9583 },
+  { code: "AMS", city: "Amsterdam", name: "Amsterdam Centraal", country: "Netherlands", region: "Europe", lat: 52.3791, lng: 4.9003 },
+
+  // Worldwide airport network.
+  { code: "YYZ", city: "Toronto", name: "Pearson Intl", country: "Canada", region: "North America", lat: 43.6777, lng: -79.6248 },
+  { code: "YVR", city: "Vancouver", name: "Vancouver Intl", country: "Canada", region: "North America", lat: 49.1967, lng: -123.1815 },
+  { code: "MEX", city: "Mexico City", name: "Benito Juarez Intl", country: "Mexico", region: "North America", lat: 19.4361, lng: -99.0719 },
+  { code: "ATL", city: "Atlanta", name: "Hartsfield-Jackson", country: "USA", region: "North America", lat: 33.6407, lng: -84.4277 },
+  { code: "SEA", city: "Seattle", name: "Seattle-Tacoma Intl", country: "USA", region: "North America", lat: 47.4502, lng: -122.3088 },
+  { code: "BOS", city: "Boston", name: "Logan Intl", country: "USA", region: "North America", lat: 42.3656, lng: -71.0096 },
+  { code: "DFW", city: "Dallas", name: "Dallas/Fort Worth Intl", country: "USA", region: "North America", lat: 32.8998, lng: -97.0403 },
+  { code: "GRU", city: "Sao Paulo", name: "Guarulhos Intl", country: "Brazil", region: "South America", lat: -23.4356, lng: -46.4731 },
+  { code: "EZE", city: "Buenos Aires", name: "Ezeiza Intl", country: "Argentina", region: "South America", lat: -34.8222, lng: -58.5358 },
+  { code: "BOG", city: "Bogota", name: "El Dorado Intl", country: "Colombia", region: "South America", lat: 4.7016, lng: -74.1469 },
+  { code: "LIM", city: "Lima", name: "Jorge Chavez Intl", country: "Peru", region: "South America", lat: -12.0219, lng: -77.1143 },
+  { code: "SCL", city: "Santiago", name: "Arturo Merino Benitez", country: "Chile", region: "South America", lat: -33.393, lng: -70.7858 },
+  { code: "CDG", city: "Paris", name: "Charles de Gaulle", country: "France", region: "Europe", lat: 49.0097, lng: 2.5479 },
+  { code: "MAD", city: "Madrid", name: "Barajas Intl", country: "Spain", region: "Europe", lat: 40.4839, lng: -3.568 },
+  { code: "BCN", city: "Barcelona", name: "El Prat", country: "Spain", region: "Europe", lat: 41.2974, lng: 2.0833 },
+  { code: "FCO", city: "Rome", name: "Fiumicino", country: "Italy", region: "Europe", lat: 41.8003, lng: 12.2389 },
+  { code: "ZRH", city: "Zurich", name: "Zurich Airport", country: "Switzerland", region: "Europe", lat: 47.4647, lng: 8.5492 },
+  { code: "CPH", city: "Copenhagen", name: "Kastrup", country: "Denmark", region: "Europe", lat: 55.618, lng: 12.6508 },
+  { code: "IST", city: "Istanbul", name: "Istanbul Airport", country: "Turkey", region: "Europe", lat: 41.2753, lng: 28.7519 },
+  { code: "LIS", city: "Lisbon", name: "Humberto Delgado", country: "Portugal", region: "Europe", lat: 38.7742, lng: -9.1342 },
+  { code: "DUB", city: "Dublin", name: "Dublin Airport", country: "Ireland", region: "Europe", lat: 53.4213, lng: -6.2701 },
+  { code: "ARN", city: "Stockholm", name: "Arlanda", country: "Sweden", region: "Europe", lat: 59.6519, lng: 17.9186 },
+  { code: "PRG", city: "Prague", name: "Vaclav Havel", country: "Czechia", region: "Europe", lat: 50.1008, lng: 14.26 },
+  { code: "ATH", city: "Athens", name: "Eleftherios Venizelos", country: "Greece", region: "Europe", lat: 37.9364, lng: 23.9445 },
+  { code: "JNB", city: "Johannesburg", name: "O.R. Tambo Intl", country: "South Africa", region: "Africa", lat: -26.1367, lng: 28.2411 },
+  { code: "CPT", city: "Cape Town", name: "Cape Town Intl", country: "South Africa", region: "Africa", lat: -33.9715, lng: 18.6021 },
+  { code: "CAI", city: "Cairo", name: "Cairo Intl", country: "Egypt", region: "Africa", lat: 30.1219, lng: 31.4056 },
+  { code: "LOS", city: "Lagos", name: "Murtala Muhammed Intl", country: "Nigeria", region: "Africa", lat: 6.5774, lng: 3.3212 },
+  { code: "NBO", city: "Nairobi", name: "Jomo Kenyatta Intl", country: "Kenya", region: "Africa", lat: -1.3192, lng: 36.9278 },
+  { code: "ACC", city: "Accra", name: "Kotoka Intl", country: "Ghana", region: "Africa", lat: 5.6052, lng: -0.1668 },
+  { code: "CMN", city: "Casablanca", name: "Mohammed V Intl", country: "Morocco", region: "Africa", lat: 33.3675, lng: -7.59 },
+  { code: "BKK", city: "Bangkok", name: "Suvarnabhumi", country: "Thailand", region: "Asia", lat: 13.69, lng: 100.7501 },
+  { code: "KUL", city: "Kuala Lumpur", name: "KLIA", country: "Malaysia", region: "Asia", lat: 2.7456, lng: 101.7099 },
+  { code: "DEL", city: "Delhi", name: "Indira Gandhi Intl", country: "India", region: "Asia", lat: 28.5562, lng: 77.1 },
+  { code: "BOM", city: "Mumbai", name: "Chhatrapati Shivaji", country: "India", region: "Asia", lat: 19.0896, lng: 72.8656 },
+  { code: "PVG", city: "Shanghai", name: "Pudong Intl", country: "China", region: "Asia", lat: 31.1443, lng: 121.8083 },
+  { code: "PEK", city: "Beijing", name: "Capital Intl", country: "China", region: "Asia", lat: 40.0799, lng: 116.6031 },
+  { code: "TPE", city: "Taipei", name: "Taoyuan Intl", country: "Taiwan", region: "Asia", lat: 25.0777, lng: 121.2328 },
+  { code: "MNL", city: "Manila", name: "Ninoy Aquino Intl", country: "Philippines", region: "Asia", lat: 14.5086, lng: 121.0194 },
+  { code: "CGK", city: "Jakarta", name: "Soekarno-Hatta", country: "Indonesia", region: "Asia", lat: -6.1256, lng: 106.6559 },
+  { code: "DOH", city: "Doha", name: "Hamad Intl", country: "Qatar", region: "Middle East", lat: 25.2731, lng: 51.6081 },
+  { code: "AUH", city: "Abu Dhabi", name: "Zayed Intl", country: "UAE", region: "Middle East", lat: 24.433, lng: 54.6511 },
+  { code: "RUH", city: "Riyadh", name: "King Khalid Intl", country: "Saudi Arabia", region: "Middle East", lat: 24.9576, lng: 46.6988 },
+  { code: "TLV", city: "Tel Aviv", name: "Ben Gurion", country: "Israel", region: "Middle East", lat: 32.0114, lng: 34.8867 },
+  { code: "SYD", city: "Sydney", name: "Kingsford Smith", country: "Australia", region: "Oceania", lat: -33.9399, lng: 151.1753 },
+  { code: "MEL", city: "Melbourne", name: "Tullamarine", country: "Australia", region: "Oceania", lat: -37.669, lng: 144.841 },
+  { code: "AKL", city: "Auckland", name: "Auckland Airport", country: "New Zealand", region: "Oceania", lat: -37.0082, lng: 174.785 },
+  { code: "BNE", city: "Brisbane", name: "Brisbane Airport", country: "Australia", region: "Oceania", lat: -27.3842, lng: 153.1175 },
+  { code: "PER", city: "Perth", name: "Perth Airport", country: "Australia", region: "Oceania", lat: -31.9385, lng: 115.9672 },
 ];
 
 export type Airline = {
@@ -144,6 +195,9 @@ export const airlines: Airline[] = [
   { code: "CX", name: "Continental Express", color: "#0d9488" },
   { code: "LW", name: "LinkWay Coach", color: "#d97706" },
   { code: "CL", name: "ContinentalLink", color: "#ca8a04" },
+  { code: "AT", name: "AtlasAir Global", color: "#0ea5e9" },
+  { code: "SV", name: "SkyVista", color: "#8b5cf6" },
+  { code: "PW", name: "PacificWing", color: "#14b8a6" },
 ];
 
 export type FlightOffer = {
@@ -622,6 +676,58 @@ export const flightOffers: FlightOffer[] = [
   { id: "BU661", airline: operator("CL"), flightNumber: "BU 661", from: airport("CGN"), to: airport("BRU"), departTime: "13:35", arriveTime: "16:05", durationMins: 150, stops: 0, price: 22, cabin: "Economy", seatsLeft: 35, mode: "bus" },
   { id: "BU700", airline: operator("LW"), flightNumber: "BU 700", from: airport("MAN"), to: airport("BER"), departTime: "05:30", arriveTime: "16:30", durationMins: 660, stops: 1, price: 55, cabin: "Economy", seatsLeft: 20, mode: "bus" },
   { id: "BU701", airline: operator("LW"), flightNumber: "BU 701", from: airport("BER"), to: airport("MAN"), departTime: "07:00", arriveTime: "18:00", durationMins: 660, stops: 1, price: 55, cabin: "Economy", seatsLeft: 18, mode: "bus" },
+
+  // Worldwide flight network.
+  { id: "AF881", airline: operator("AF"), flightNumber: "AF 881", from: airport("JFK"), to: airport("CDG"), departTime: "19:40", arriveTime: "08:55", durationMins: 435, stops: 0, price: 489, cabin: "Economy", seatsLeft: 18 },
+  { id: "BA204", airline: operator("BA"), flightNumber: "BA 204", from: airport("LHR"), to: airport("JFK"), departTime: "10:15", arriveTime: "13:20", durationMins: 485, stops: 0, price: 522, cabin: "Economy", seatsLeft: 22 },
+  { id: "AT310", airline: operator("AT"), flightNumber: "AT 310", from: airport("JFK"), to: airport("GRU"), departTime: "21:50", arriveTime: "10:40", durationMins: 590, stops: 0, price: 712, cabin: "Economy", seatsLeft: 14 },
+  { id: "AT415", airline: operator("AT"), flightNumber: "AT 415", from: airport("GRU"), to: airport("LIS"), departTime: "23:10", arriveTime: "13:05", durationMins: 560, stops: 0, price: 648, cabin: "Economy", seatsLeft: 9 },
+  { id: "SV220", airline: operator("SV"), flightNumber: "SV 220", from: airport("LHR"), to: airport("JNB"), departTime: "19:05", arriveTime: "07:35", durationMins: 665, stops: 0, price: 798, cabin: "Economy", seatsLeft: 11 },
+  { id: "SV305", airline: operator("SV"), flightNumber: "SV 305", from: airport("CDG"), to: airport("CAI"), departTime: "14:20", arriveTime: "19:45", durationMins: 265, stops: 0, price: 342, cabin: "Economy", seatsLeft: 26 },
+  { id: "SV412", airline: operator("SV"), flightNumber: "SV 412", from: airport("LHR"), to: airport("LOS"), departTime: "21:30", arriveTime: "05:10", durationMins: 405, stops: 0, price: 571, cabin: "Economy", seatsLeft: 8 },
+  { id: "AT520", airline: operator("AT"), flightNumber: "AT 520", from: airport("JNB"), to: airport("NBO"), departTime: "08:15", arriveTime: "12:05", durationMins: 230, stops: 0, price: 289, cabin: "Economy", seatsLeft: 19 },
+  { id: "PW110", airline: operator("PW"), flightNumber: "PW 110", from: airport("LAX"), to: airport("SYD"), departTime: "22:30", arriveTime: "07:45", durationMins: 900, stops: 0, price: 986, cabin: "Economy", seatsLeft: 7 },
+  { id: "PW225", airline: operator("PW"), flightNumber: "PW 225", from: airport("SYD"), to: airport("SIN"), departTime: "09:40", arriveTime: "15:55", durationMins: 495, stops: 0, price: 612, cabin: "Economy", seatsLeft: 16 },
+  { id: "PW330", airline: operator("PW"), flightNumber: "PW 330", from: airport("AKL"), to: airport("MEL"), departTime: "06:20", arriveTime: "08:05", durationMins: 225, stops: 0, price: 268, cabin: "Economy", seatsLeft: 24 },
+  { id: "PW445", airline: operator("PW"), flightNumber: "PW 445", from: airport("SYD"), to: airport("AKL"), departTime: "16:10", arriveTime: "21:25", durationMins: 195, stops: 0, price: 241, cabin: "Economy", seatsLeft: 31 },
+  { id: "EJ710", airline: operator("EJ"), flightNumber: "EJ 710", from: airport("DXB"), to: airport("LHR"), departTime: "02:40", arriveTime: "07:15", durationMins: 455, stops: 0, price: 534, cabin: "Business", seatsLeft: 5 },
+  { id: "EJ815", airline: operator("EJ"), flightNumber: "EJ 815", from: airport("DOH"), to: airport("JFK"), departTime: "01:20", arriveTime: "08:05", durationMins: 825, stops: 0, price: 879, cabin: "Business", seatsLeft: 4 },
+  { id: "EJ920", airline: operator("EJ"), flightNumber: "EJ 920", from: airport("AUH"), to: airport("DEL"), departTime: "03:50", arriveTime: "09:10", durationMins: 200, stops: 0, price: 318, cabin: "Economy", seatsLeft: 21 },
+  { id: "SV630", airline: operator("SV"), flightNumber: "SV 630", from: airport("TLV"), to: airport("CDG"), departTime: "06:45", arriveTime: "10:30", durationMins: 285, stops: 0, price: 384, cabin: "Economy", seatsLeft: 17 },
+  { id: "NA240", airline: operator("NA"), flightNumber: "NA 240", from: airport("HND"), to: airport("SIN"), departTime: "10:05", arriveTime: "16:40", durationMins: 455, stops: 0, price: 543, cabin: "Economy", seatsLeft: 13 },
+  { id: "NA355", airline: operator("NA"), flightNumber: "NA 355", from: airport("PVG"), to: airport("LAX"), departTime: "15:30", arriveTime: "11:50", durationMins: 680, stops: 0, price: 724, cabin: "Economy", seatsLeft: 10 },
+  { id: "TP460", airline: operator("TP"), flightNumber: "TP 460", from: airport("SIN"), to: airport("BOM"), departTime: "19:15", arriveTime: "22:40", durationMins: 325, stops: 0, price: 398, cabin: "Economy", seatsLeft: 23 },
+  { id: "TP575", airline: operator("TP"), flightNumber: "TP 575", from: airport("BKK"), to: airport("SYD"), departTime: "23:45", arriveTime: "11:20", durationMins: 565, stops: 0, price: 631, cabin: "Economy", seatsLeft: 12 },
+  { id: "NA680", airline: operator("NA"), flightNumber: "NA 680", from: airport("ICN"), to: airport("TPE"), departTime: "09:25", arriveTime: "11:15", durationMins: 170, stops: 0, price: 276, cabin: "Economy", seatsLeft: 28 },
+  { id: "TP790", airline: operator("TP"), flightNumber: "TP 790", from: airport("KUL"), to: airport("CGK"), departTime: "13:40", arriveTime: "14:35", durationMins: 115, stops: 0, price: 164, cabin: "Economy", seatsLeft: 35 },
+  { id: "AT835", airline: operator("AT"), flightNumber: "AT 835", from: airport("DEL"), to: airport("LHR"), departTime: "02:10", arriveTime: "07:05", durationMins: 565, stops: 0, price: 652, cabin: "Economy", seatsLeft: 15 },
+  { id: "AF915", airline: operator("AF"), flightNumber: "AF 915", from: airport("MEX"), to: airport("MAD"), departTime: "23:55", arriveTime: "18:40", durationMins: 605, stops: 0, price: 704, cabin: "Economy", seatsLeft: 11 },
+  { id: "AF126W", airline: operator("AF"), flightNumber: "AF 126", from: airport("YYZ"), to: airport("LHR"), departTime: "21:15", arriveTime: "09:05", durationMins: 470, stops: 0, price: 498, cabin: "Economy", seatsLeft: 20 },
+  { id: "BA330W", airline: operator("BA"), flightNumber: "BA 330", from: airport("MAN"), to: airport("DUB"), departTime: "07:50", arriveTime: "09:00", durationMins: 70, stops: 0, price: 118, cabin: "Economy", seatsLeft: 42 },
+  { id: "BA445", airline: operator("BA"), flightNumber: "BA 445", from: airport("LHR"), to: airport("FCO"), departTime: "11:20", arriveTime: "14:55", durationMins: 155, stops: 0, price: 187, cabin: "Economy", seatsLeft: 33 },
+  { id: "AF560", airline: operator("AF"), flightNumber: "AF 560", from: airport("CDG"), to: airport("BCN"), departTime: "16:40", arriveTime: "18:25", durationMins: 105, stops: 0, price: 142, cabin: "Economy", seatsLeft: 38 },
+  { id: "AF675", airline: operator("AF"), flightNumber: "AF 675", from: airport("MAD"), to: airport("LIS"), departTime: "08:30", arriveTime: "09:35", durationMins: 65, stops: 0, price: 96, cabin: "Economy", seatsLeft: 45 },
+  { id: "BA780", airline: operator("BA"), flightNumber: "BA 780", from: airport("LHR"), to: airport("ARN"), departTime: "13:15", arriveTime: "16:45", durationMins: 150, stops: 0, price: 176, cabin: "Economy", seatsLeft: 29 },
+  { id: "AF890", airline: operator("AF"), flightNumber: "AF 890", from: airport("ZRH"), to: airport("PRG"), departTime: "10:05", arriveTime: "11:30", durationMins: 85, stops: 0, price: 124, cabin: "Economy", seatsLeft: 36 },
+  { id: "BA905W", airline: operator("BA"), flightNumber: "BA 905", from: airport("LGW"), to: airport("ATH"), departTime: "06:35", arriveTime: "12:20", durationMins: 225, stops: 0, price: 214, cabin: "Economy", seatsLeft: 25 },
+  { id: "SV150", airline: operator("SV"), flightNumber: "SV 150", from: airport("IST"), to: airport("CMN"), departTime: "09:10", arriveTime: "12:55", durationMins: 285, stops: 0, price: 268, cabin: "Economy", seatsLeft: 22 },
+  { id: "AT265", airline: operator("AT"), flightNumber: "AT 265", from: airport("BOS"), to: airport("DUB"), departTime: "20:40", arriveTime: "07:55", durationMins: 375, stops: 0, price: 432, cabin: "Economy", seatsLeft: 18 },
+  { id: "AT380", airline: operator("AT"), flightNumber: "AT 380", from: airport("SEA"), to: airport("ICN"), departTime: "13:25", arriveTime: "16:40", durationMins: 670, stops: 0, price: 758, cabin: "Economy", seatsLeft: 9 },
+  { id: "PW495", airline: operator("PW"), flightNumber: "PW 495", from: airport("SFO"), to: airport("AKL"), departTime: "21:55", arriveTime: "06:30", durationMins: 790, stops: 0, price: 891, cabin: "Economy", seatsLeft: 6 },
+  { id: "AT610", airline: operator("AT"), flightNumber: "AT 610", from: airport("ATL"), to: airport("BOG"), departTime: "09:15", arriveTime: "14:05", durationMins: 290, stops: 0, price: 367, cabin: "Economy", seatsLeft: 27 },
+  { id: "AT725", airline: operator("AT"), flightNumber: "AT 725", from: airport("MIA"), to: airport("LIM"), departTime: "23:20", arriveTime: "06:45", durationMins: 325, stops: 0, price: 412, cabin: "Economy", seatsLeft: 16 },
+  { id: "AT840", airline: operator("AT"), flightNumber: "AT 840", from: airport("EZE"), to: airport("SCL"), departTime: "07:40", arriveTime: "09:25", durationMins: 105, stops: 0, price: 158, cabin: "Economy", seatsLeft: 34 },
+  { id: "SV955", airline: operator("SV"), flightNumber: "SV 955", from: airport("CPT"), to: airport("JNB"), departTime: "17:30", arriveTime: "19:35", durationMins: 125, stops: 0, price: 146, cabin: "Economy", seatsLeft: 41 },
+  { id: "SV170", airline: operator("SV"), flightNumber: "SV 170", from: airport("ACC"), to: airport("LOS"), departTime: "11:45", arriveTime: "12:50", durationMins: 65, stops: 0, price: 108, cabin: "Economy", seatsLeft: 39 },
+  { id: "EJ285", airline: operator("EJ"), flightNumber: "EJ 285", from: airport("DXB"), to: airport("SYD"), departTime: "10:30", arriveTime: "06:15", durationMins: 825, stops: 0, price: 934, cabin: "First", seatsLeft: 3 },
+  { id: "EJ390", airline: operator("EJ"), flightNumber: "EJ 390", from: airport("RUH"), to: airport("CAI"), departTime: "15:05", arriveTime: "16:50", durationMins: 165, stops: 0, price: 238, cabin: "Economy", seatsLeft: 30 },
+  { id: "NA405", airline: operator("NA"), flightNumber: "NA 405", from: airport("PEK"), to: airport("HND"), departTime: "08:40", arriveTime: "13:15", durationMins: 215, stops: 0, price: 342, cabin: "Economy", seatsLeft: 24 },
+  { id: "TP510", airline: operator("TP"), flightNumber: "TP 510", from: airport("MNL"), to: airport("HKG"), departTime: "14:20", arriveTime: "16:35", durationMins: 135, stops: 0, price: 196, cabin: "Economy", seatsLeft: 32 },
+  { id: "PW625", airline: operator("PW"), flightNumber: "PW 625", from: airport("PER"), to: airport("DPS"), departTime: "09:50", arriveTime: "13:05", durationMins: 195, stops: 0, price: 254, cabin: "Economy", seatsLeft: 26 },
+  { id: "AT740", airline: operator("AT"), flightNumber: "AT 740", from: airport("YVR"), to: airport("NRT"), departTime: "12:15", arriveTime: "15:30", durationMins: 610, stops: 0, price: 687, cabin: "Economy", seatsLeft: 13 },
+  { id: "SV860", airline: operator("SV"), flightNumber: "SV 860", from: airport("NBO"), to: airport("DXB"), departTime: "22:10", arriveTime: "04:35", durationMins: 265, stops: 0, price: 384, cabin: "Economy", seatsLeft: 20 },
+  { id: "AF975", airline: operator("AF"), flightNumber: "AF 975", from: airport("CPH"), to: airport("JFK"), departTime: "11:30", arriveTime: "13:55", durationMins: 505, stops: 0, price: 556, cabin: "Premium Economy", seatsLeft: 14 },
+  { id: "BA115", airline: operator("BA"), flightNumber: "BA 115", from: airport("DFW"), to: airport("LHR"), departTime: "18:50", arriveTime: "09:40", durationMins: 530, stops: 0, price: 612, cabin: "Economy", seatsLeft: 17 },
 ];
 
 export type Testimonial = {

@@ -25,10 +25,29 @@ create table if not exists public.airports (
   city text not null,
   name text not null,
   country text not null,
-  region text not null check (region in ('USA', 'Asia', 'UK', 'Other')),
+  region text not null,
   lat double precision not null,
   lng double precision not null
 );
+
+-- The network went worldwide, so region moved from the original
+-- USA/Asia/UK/Other set to proper continents. Existing rows are migrated
+-- before the new constraint is applied, so re-running this file on a
+-- project seeded with the old values succeeds rather than failing the
+-- check. Dubai moves to Middle East; the European rail/coach stations
+-- previously filed under 'Other'/'UK' become Europe.
+do $$
+begin
+  alter table public.airports drop constraint airports_region_check;
+exception when undefined_object then null;
+end $$;
+
+update public.airports set region = 'North America' where region = 'USA';
+update public.airports set region = 'Europe' where region in ('UK', 'Other');
+update public.airports set region = 'Middle East' where code in ('DXB', 'DOH', 'AUH', 'RUH', 'TLV');
+
+alter table public.airports add constraint airports_region_check
+  check (region in ('North America', 'South America', 'Europe', 'Africa', 'Asia', 'Middle East', 'Oceania'));
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- airlines

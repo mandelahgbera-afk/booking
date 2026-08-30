@@ -6,7 +6,7 @@ import { ArrowUpRight } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { Destination } from "@/lib/mock-data";
 
-const REGIONS = ["All", "USA", "Asia", "UK"] as const;
+const REGIONS = ["All", "North America", "South America", "Europe", "Africa", "Asia", "Middle East", "Oceania"] as const;
 
 export const DestinationsBrowser = ({
   destinations,

@@ -17,7 +17,7 @@ export type AirportRow = {
   city: string;
   name: string;
   country: string;
-  region: "USA" | "Asia" | "UK" | "Other";
+  region: "North America" | "South America" | "Europe" | "Africa" | "Asia" | "Middle East" | "Oceania";
   lat: number;
   lng: number;
 };

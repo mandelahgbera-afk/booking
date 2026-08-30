@@ -40,10 +40,16 @@ export async function getDestinations(): Promise<Destination[]> {
     const supabase = createPublicClient();
     const { data, error } = await supabase
       .from("airports")
-      .select("*")
-      .neq("region", "Other");
+      .select("*");
     if (error || !data || data.length === 0) throw error ?? new Error("empty");
-    return data.map((a) => ({
+    // One card per city, not per terminal — London alone has LHR, LGW and
+    // the St Pancras rail station, and Paris has both CDG and Gare du Nord.
+    // A destinations grid listing the same city three times reads as a bug.
+    const byCity = new Map<string, (typeof data)[number]>();
+    for (const a of data) {
+      if (!byCity.has(a.city)) byCity.set(a.city, a);
+    }
+    return [...byCity.values()].map((a) => ({
       city: a.city,
       country: a.country,
       iata: a.code,

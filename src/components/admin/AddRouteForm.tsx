@@ -14,7 +14,7 @@ const MODES = [
 ] as const;
 
 const NEW = "__new__";
-const REGIONS = ["USA", "Asia", "UK", "Other"] as const;
+const REGIONS = ["North America", "South America", "Europe", "Africa", "Asia", "Middle East", "Oceania"] as const;
 
 type LocationDraft = {
   code: string;
@@ -25,7 +25,7 @@ type LocationDraft = {
   latLng: string; // "lat,lng", optional — parsed on submit, only feeds the route map
 };
 
-const emptyLocation: LocationDraft = { code: "", city: "", name: "", country: "", region: "Other", latLng: "" };
+const emptyLocation: LocationDraft = { code: "", city: "", name: "", country: "", region: "Europe", latLng: "" };
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400";

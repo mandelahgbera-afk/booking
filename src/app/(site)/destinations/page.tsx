@@ -3,7 +3,7 @@ import { DestinationsBrowser } from "@/components/destinations/DestinationsBrows
 
 export const revalidate = 3600;
 
-const VALID_REGIONS = ["USA", "Asia", "UK"] as const;
+const VALID_REGIONS = ["North America", "South America", "Europe", "Africa", "Asia", "Middle East", "Oceania"] as const;
 
 export default async function DestinationsPage({
   searchParams,
@@ -26,8 +26,8 @@ export default async function DestinationsPage({
           Every destination we fly
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-slate-500">
-          {destinations.length} cities across the USA, Asia, and the UK — browse
-          by region and jump straight into live fares.
+          {destinations.length} cities across six continents — browse by region and
+          jump straight into live fares.
         </p>
       </div>
 

@@ -7,7 +7,7 @@ import { destinations } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
-const REGIONS = ["All", "USA", "Asia", "UK"] as const;
+const REGIONS = ["All", "North America", "South America", "Europe", "Africa", "Asia", "Middle East", "Oceania"] as const;
 
 export const Destinations = () => {
   const [region, setRegion] = useState<(typeof REGIONS)[number]>("All");
