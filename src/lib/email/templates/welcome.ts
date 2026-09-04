@@ -10,7 +10,7 @@ export function welcomeEmail({ name, siteUrl }: { name: string; siteUrl?: string
       title: `Welcome aboard, ${firstName}`,
       bodyHtml: `
         <div class="text-body" style="font-size:15px; color:#475569; line-height:1.6; max-width:420px; margin:0 auto;">
-          Your AirFly account is ready. Compare fares across the USA, Asia, and the UK,
+          Your AirFly account is ready. Compare fares worldwide,
           save travelers for faster checkout, and track every booking in one place.
         </div>`,
       button: { label: "Search your first flight", url: `${siteUrl ?? "https://airfly.example"}/flights` },

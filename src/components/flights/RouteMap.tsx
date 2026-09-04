@@ -66,6 +66,7 @@ function formatDuration(mins: number) {
 
 export const RouteMap = ({ offer }: { offer: FlightOffer }) => {
   const mapRef = useRef<MapRef>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const mode = offer.mode ?? "flight";
   const { from, to } = offer;
   const ModeIcon = MODE_ICON[mode];
@@ -76,6 +77,7 @@ export const RouteMap = ({ offer }: { offer: FlightOffer }) => {
   // front, and also catch runtime failures via onError, so this component
   // always renders something meaningful instead of dead space.
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const loadedRef = useRef(false);
 
   // The commonest real-world failure isn't WebGL — it's the Mapbox tile CDN
@@ -83,10 +85,17 @@ export const RouteMap = ({ offer }: { offer: FlightOffer }) => {
   // which leaves a mounted canvas painting nothing at all. Mapbox surfaces
   // no reliable event for that, so treat "style never finished loading" as
   // the signal and fall back rather than leave a blank panel.
+  // This used to be a 6s hard deadline, which is a race rather than a
+  // diagnosis: a cold Mapbox load over a slow phone connection routinely
+  // takes longer, so the map would fall back to the static route even
+  // though it was seconds from painting — and never recovered once it had.
+  // That is the "sometimes it shows, sometimes it doesn't" behaviour. The
+  // window is now generous enough to only catch genuinely-blocked tiles,
+  // and onLoad clears the failure if the style does arrive late.
   useEffect(() => {
     const t = setTimeout(() => {
       if (!loadedRef.current) setFailed(true);
-    }, 6000);
+    }, 15000);
     return () => clearTimeout(t);
   }, []);
   useEffect(() => {
@@ -136,6 +145,9 @@ export const RouteMap = ({ offer }: { offer: FlightOffer }) => {
 
   const onLoad = useCallback((e: MapEvent) => {
     loadedRef.current = true;
+    setLoaded(true);
+    // The style arrived after all — undo a timeout-driven fallback.
+    setFailed(false);
     const map = e.target;
     // setPaintProperty's property name is a huge literal union; these are
     // valid members but only known as string here, so the call is narrowed
@@ -164,7 +176,10 @@ export const RouteMap = ({ offer }: { offer: FlightOffer }) => {
   // is continental scale — fine for JFK→LHR, useless for a 300km train hop.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    // Gated on `loaded`: calling fitBounds before the style is ready
+    // silently does nothing, which left long routes framed at the
+    // initial zoom with both endpoints off-screen.
+    if (!map || !loaded) return;
     map.fitBounds(
       [
         [Math.min(from.lng, to.lng), Math.min(from.lat, to.lat)],
@@ -172,7 +187,19 @@ export const RouteMap = ({ offer }: { offer: FlightOffer }) => {
       ],
       { padding: { top: 72, bottom: 56, left: 56, right: 56 }, duration: 700, maxZoom: 7 }
     );
-  }, [from.lng, from.lat, to.lng, to.lat]);
+  }, [from.lng, from.lat, to.lng, to.lat, loaded]);
+
+  // A map that mounts inside a collapsed or freshly-revealed container gets
+  // a zero-size canvas and paints nothing until something forces a resize.
+  // Observing the container covers tab switches and orientation changes,
+  // which on a phone is the difference between a map and a grey box.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !loaded) return;
+    const ro = new ResizeObserver(() => mapRef.current?.resize());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [loaded]);
 
   const summary = (
     <RouteSummary offer={offer} mode={mode} ModeIcon={ModeIcon} />
@@ -183,12 +210,21 @@ export const RouteMap = ({ offer }: { offer: FlightOffer }) => {
   }
 
   return (
-    <div className="relative h-full min-h-[300px] w-full overflow-hidden rounded-3xl border border-slate-200">
+    <div
+      ref={containerRef}
+      className="relative h-full min-h-[300px] w-full overflow-hidden rounded-3xl border border-slate-200"
+    >
       <Map
         ref={mapRef}
         mapboxAccessToken={MAPBOX_TOKEN}
         onLoad={onLoad}
-        onError={() => setFailed(true)}
+        onError={() => {
+          // Mapbox fires `error` for transient things too — a single 404
+          // tile, an aborted request on navigation. Tearing the whole map
+          // down for one of those was a large part of the flakiness, so
+          // only treat an error as fatal if the style never loaded at all.
+          if (!loadedRef.current) setFailed(true);
+        }}
         initialViewState={{
           longitude: (from.lng + to.lng) / 2,
           latitude: (from.lat + to.lat) / 2,

@@ -52,7 +52,7 @@ export default function OpengraphImage() {
           Fly anywhere, book with confidence
         </div>
         <div style={{ marginTop: 14, fontSize: 24, color: "#64748b" }}>
-          Flights across the USA, Asia, and the UK
+          Flights across six continents
         </div>
       </div>
     ),

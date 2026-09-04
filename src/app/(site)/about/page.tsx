@@ -44,7 +44,7 @@ export default function AboutPage() {
         <p className="mx-auto mt-4 max-w-xl text-slate-500">
           AirFly started as a frustration with clunky, ad-choked booking
           sites — and grew into a platform travelers actually enjoy using,
-          across the USA, Asia, and the UK.
+          across six continents.
         </p>
         <p className="mx-auto mt-3 max-w-xl text-sm font-medium text-slate-400">
           Important: we&apos;re a booking platform, not an airline — we don&apos;t

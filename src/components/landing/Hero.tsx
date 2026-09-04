@@ -24,7 +24,7 @@ export const Hero = () => {
 
         <p className="mt-5 max-w-xl text-base text-slate-500 sm:text-lg">
           We&apos;re a trusted third-party booking platform — compare real-time fares
-          across the USA, Asia, and the UK from the airlines you already know, then
+          worldwide from the airlines you already know, then
           book, split payment, and manage every trip from one beautifully simple place.
         </p>
 

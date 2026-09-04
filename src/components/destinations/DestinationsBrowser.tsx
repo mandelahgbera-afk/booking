@@ -21,13 +21,13 @@ export const DestinationsBrowser = ({
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
-      <div className="mb-8 flex justify-center gap-2 rounded-full border border-slate-200 bg-white p-1 w-fit mx-auto">
+      <div className="no-scrollbar mx-auto mb-8 flex w-fit max-w-full justify-start gap-2 overflow-x-auto rounded-full border border-slate-200 bg-white p-1 sm:justify-center">
         {REGIONS.map((r) => (
           <button
             key={r}
             onClick={() => setRegion(r)}
             className={cn(
-              "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+              "shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
               region === r ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100"
             )}
           >

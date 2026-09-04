@@ -131,3 +131,23 @@
     font-size: 16px;
   }
 }
+
+/* Horizontally scrollable chip rails (region filters) keep their pill-rail
+   shape on a phone instead of wrapping into a block or overflowing the
+   page. The bar itself is noise on a rail this short — the chips are
+   visibly cut off, which is enough of an affordance. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Belt and braces: a single stray wide element used to shove the entire
+   page sideways on a phone. `clip` rather than `hidden` because `hidden`
+   would turn the body into a scroll container and break position: sticky;
+   `clip` contains the overflow without that side effect. */
+body {
+  overflow-x: clip;
+}

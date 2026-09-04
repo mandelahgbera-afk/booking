@@ -29,13 +29,13 @@ export const Destinations = () => {
           </h2>
         </div>
 
-        <div className="flex gap-2 rounded-full border border-slate-200 bg-white p-1">
+        <div className="no-scrollbar flex max-w-full gap-2 overflow-x-auto rounded-full border border-slate-200 bg-white p-1">
           {REGIONS.map((r) => (
             <button
               key={r}
               onClick={() => setRegion(r)}
               className={cn(
-                "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                "shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
                 region === r
                   ? "bg-slate-900 text-white"
                   : "text-slate-500 hover:bg-slate-100"

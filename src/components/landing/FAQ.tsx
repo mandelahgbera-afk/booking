@@ -23,7 +23,7 @@ const FAQS = [
   },
   {
     q: "Which regions do you cover?",
-    a: "We currently fly routes across the USA, Asia, and the UK, with new destinations added regularly.",
+    a: "We fly routes across six continents, with new destinations added regularly.",
   },
 ];
 

@@ -10,7 +10,7 @@ const inter = Inter({
 const siteUrl = process.env.NEXT_SITE_URL || "http://localhost:3000";
 const title = "AirFly | Flight Booking Platform";
 const description =
-  "Compare and book flights across the USA, Asia, and the UK. Real-time fares, split payments, gift cards, and instant e-tickets.";
+  "Compare and book flights worldwide. Real-time fares, split payments, gift cards, and instant e-tickets.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
