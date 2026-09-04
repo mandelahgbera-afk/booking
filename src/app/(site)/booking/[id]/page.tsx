@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
-import { getFlightOffer, getPlatformSettings } from "@/lib/data";
+import { getFlightOffer, getPlatformSettings, getTakenSeats } from "@/lib/data";
 import { BookingFlow } from "@/components/booking/BookingFlow";
 
-// Public data only (no cookies) — each flight id gets its own statically
-// cached page, revalidated every 30s so payment-mode/maintenance changes
-// from the admin settings page show up quickly without going fully dynamic.
-export const revalidate = 30;
+// Rendered per request rather than cached: the seat map now reflects real
+// sold seats, and serving a 30s-old copy would show seats as free that
+// someone else has already taken.
+export const revalidate = 0;
 
 export default async function BookingPage({
   params,
@@ -16,9 +16,10 @@ export default async function BookingPage({
 }) {
   const { id } = await params;
   const { retry } = await searchParams;
-  const [offer, settings] = await Promise.all([
+  const [offer, settings, takenSeats] = await Promise.all([
     getFlightOffer(id),
     getPlatformSettings(),
+    getTakenSeats(id),
   ]);
 
   if (!offer) notFound();
@@ -40,7 +41,12 @@ export default async function BookingPage({
         <h1 className="mb-8 text-2xl font-bold tracking-tight text-slate-900">
           Complete your booking
         </h1>
-        <BookingFlow offer={offer} settings={settings} isRetry={retry === "wallet"} />
+        <BookingFlow
+          offer={offer}
+          settings={settings}
+          takenSeats={takenSeats}
+          isRetry={retry === "wallet"}
+        />
       </div>
     </div>
   );

@@ -5,22 +5,23 @@ import { cn } from "@/lib/utils";
 const ROWS = 8;
 const COLS = ["A", "B", "C", "D", "E", "F"];
 
-// Deterministic pseudo-random "taken" seats so the layout looks realistic
-// but doesn't shift between renders.
-function isTaken(row: number, col: string) {
-  const seed = row * 7 + col.charCodeAt(0);
-  return seed % 5 === 0;
-}
 
 export const SeatMap = ({
   count,
   selected,
   onChange,
+  takenSeats = [],
 }: {
   count: number;
   selected: string[];
   onChange: (seats: string[]) => void;
+  /** Seats genuinely sold on this departure. This was previously a hash of
+   *  the row and column — decorative, and unrelated to what was actually
+   *  booked, so a traveler could select a sold seat and only be refused
+   *  after paying. */
+  takenSeats?: string[];
 }) => {
+  const takenSet = new Set(takenSeats);
   const toggle = (seat: string, taken: boolean) => {
     if (taken) return;
     if (selected.includes(seat)) {
@@ -63,7 +64,7 @@ export const SeatMap = ({
               </span>
               {COLS.map((col, i) => {
                 const seat = `${row}${col}`;
-                const taken = isTaken(row, col);
+                const taken = takenSet.has(seat);
                 const isSelected = selected.includes(seat);
                 return (
                   <button

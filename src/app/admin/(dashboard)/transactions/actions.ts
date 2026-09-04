@@ -91,7 +91,7 @@ export async function resolvePaymentRequestAction(
           p_passengers: m.passengers.map((p, i) => ({ ...p, seat: m.seats[i] ?? "" })),
           p_seats: m.seats,
           p_cabin: m.cabin,
-          p_total_amount: amount,
+          p_expected_amount: amount,
           p_method: m.method,
           p_transaction_id: `sim_${id.slice(0, 10)}`,
         });

@@ -30,10 +30,12 @@ export async function confirmBooking({
   total: number;
   method: string;
   transactionId: string;
-}): Promise<{ reference: string; emailWarning?: string }> {
+}): Promise<{ reference: string; emailWarning?: string; error?: string; total?: number }> {
   const fallbackReference = transactionId.slice(4, 10).toUpperCase();
   const primary = passengers[0];
   let reference = fallbackReference;
+
+  let authoritativeTotal = total;
 
   if (isSupabaseConfigured && primary?.email) {
     try {
@@ -44,15 +46,26 @@ export async function confirmBooking({
         p_passengers: passengers.map((p, i) => ({ ...p, seat: seats[i] ?? "" })),
         p_seats: seats,
         p_cabin: offer.cabin,
-        p_total_amount: total,
+        p_expected_amount: total,
         p_method: method,
         p_transaction_id: transactionId,
       });
-      if (!error && data?.success) reference = data.reference;
-      // If persistence fails (e.g. offer.id isn't a real flights.id — happens
-      // when Supabase is configured but flights weren't seeded from a real
-      // UUID), fall back to the client-side reference rather than blocking
-      // the confirmation the traveler is already looking at.
+
+      if (!error && data?.success) {
+        reference = data.reference;
+        if (typeof data.total === "number") authoritativeTotal = data.total;
+      } else if (!error && data && data.success === false) {
+        // A refusal from the database is a real business outcome now —
+        // sold out, seats taken while the traveler was on the payment
+        // step, or a fare that moved under them. Confirming anyway would
+        // hand out a booking the inventory cannot honour, so this is
+        // surfaced instead of being swallowed like a persistence blip.
+        return { reference, error: String(data.message ?? "That booking could not be completed.") };
+      }
+      // A transport/permission error still falls through to the
+      // client-generated reference: offer.id isn't always a real
+      // flights.id (mock mode, or flights that were never seeded), and
+      // that has never been a reason to fail a traveler's checkout.
     } catch {
       // same fallback
     }
@@ -73,7 +86,7 @@ export async function confirmBooking({
       arriveTime: offer.arriveTime,
       cabin: offer.cabin,
       seats,
-      total,
+      total: authoritativeTotal,
     });
     const confirmationResult = await sendEmail({ to: primary.email, ...confirmation });
 
@@ -81,7 +94,7 @@ export async function confirmBooking({
       reference,
       method,
       transactionId,
-      amount: total,
+      amount: authoritativeTotal,
       date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
     });
     const receiptResult = await sendEmail({ to: primary.email, ...receipt });
@@ -98,13 +111,13 @@ export async function confirmBooking({
   await notifyAdminOfTransaction({
     kind: "booking_confirmed",
     transactionType: "booking",
-    amount: total,
+    amount: authoritativeTotal,
     customerEmail: primary?.email ?? null,
     method,
     reference,
   });
 
-  return { reference, emailWarning };
+  return { reference, emailWarning, total: authoritativeTotal };
 }
 
 // Fired when a simulated card payment fails — emails a retry link that

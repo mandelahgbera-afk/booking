@@ -26,6 +26,26 @@ import {
   type AdminGiftCard,
 } from "@/lib/admin-mock";
 
+// Renders an instant as the wall-clock time at a given airport.
+// `toTimeString()` (what this replaced) formats in whatever zone the
+// *server* runs in — UTC on Vercel — so a 09:00 departure from JFK was
+// being shown as 13:00. A traveler can only act on the local time.
+function localHM(iso: string, tz: string | null | undefined) {
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: tz || "UTC",
+    }).format(new Date(iso));
+  } catch {
+    // An unknown zone must not take the page down with it.
+    return new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC",
+    }).format(new Date(iso));
+  }
+}
+
 async function safeSupabase<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   if (!isSupabaseConfigured) return fallback;
   try {
@@ -105,7 +125,7 @@ export async function getAdminFlights(): Promise<AdminFlightRoute[]> {
     const { data, error } = await supabase
       .from("flights")
       .select(
-        "id, flight_number, mode, price, seats_total, seats_left, stops, status, cabin, depart_at, arrive_at, airline:airlines(code, name), from:airports!flights_from_code_fkey(code, city), to:airports!flights_to_code_fkey(code, city)"
+        "id, flight_number, mode, price, seats_total, seats_left, stops, status, cabin, depart_at, arrive_at, airline:airlines(code, name), from:airports!flights_from_code_fkey(code, city, tz), to:airports!flights_to_code_fkey(code, city, tz)"
       )
       .order("depart_at", { ascending: true });
     if (error || !data) return [];
@@ -133,6 +153,20 @@ export async function getAdminFlights(): Promise<AdminFlightRoute[]> {
   } catch {
     return [];
   }
+}
+
+// Seats already sold on a departure. The seat map used to invent these
+// with a hash of the row and column, which looked plausible but meant a
+// traveler could pick a seat that really was sold and only discover it
+// after paying.
+export async function getTakenSeats(flightId: string): Promise<string[]> {
+  if (!isSupabaseConfigured) return [];
+  return safeSupabase(async () => {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase.rpc("get_taken_seats", { p_flight_id: flightId });
+    if (error || !data) return [];
+    return data as string[];
+  }, []);
 }
 
 export async function getFlightOffers(params?: {
@@ -178,8 +212,8 @@ export async function getFlightOffers(params?: {
         flightNumber: f.flight_number as string,
         from,
         to,
-        departTime: departAt.toTimeString().slice(0, 5),
-        arriveTime: arriveAt.toTimeString().slice(0, 5),
+        departTime: localHM(f.depart_at as string, from.tz),
+        arriveTime: localHM(f.arrive_at as string, to.tz),
         durationMins: Math.round((arriveAt.getTime() - departAt.getTime()) / 60000),
         stops: f.stops as 0 | 1 | 2,
         price: Number(f.price),
@@ -219,8 +253,8 @@ export async function getFlightOffer(id: string): Promise<FlightOffer | null> {
       flightNumber: f.flight_number as string,
       from,
       to,
-      departTime: departAt.toTimeString().slice(0, 5),
-      arriveTime: arriveAt.toTimeString().slice(0, 5),
+      departTime: localHM(f.depart_at as string, from.tz),
+      arriveTime: localHM(f.arrive_at as string, to.tz),
       durationMins: Math.round((arriveAt.getTime() - departAt.getTime()) / 60000),
       stops: f.stops as 0 | 1 | 2,
       price: Number(f.price),

@@ -94,6 +94,134 @@ end $$;
 alter table public.flights add constraint flights_mode_check
   check (mode in ('flight', 'train', 'bus'));
 
+-- Airport-local time. Every departure and arrival clock time is rendered in
+-- the airport's own zone: a flight leaving JFK at 09:00 leaves at 09:00 in
+-- New York, and showing that as UTC (or in whatever zone the viewer's
+-- browser happens to sit in) is simply the wrong number. Idempotent, and
+-- backfilled below so an existing project picks it up.
+alter table public.airports add column if not exists tz text;
+
+update public.airports as a
+set tz = v.tz
+from (values
+    ('ACC', 'Africa/Accra'),
+    ('AKL', 'Pacific/Auckland'),
+    ('AMS', 'Europe/Amsterdam'),
+    ('ARN', 'Europe/Stockholm'),
+    ('ATH', 'Europe/Athens'),
+    ('ATL', 'America/New_York'),
+    ('AUH', 'Asia/Dubai'),
+    ('BCN', 'Europe/Madrid'),
+    ('BER', 'Europe/Berlin'),
+    ('BKK', 'Asia/Bangkok'),
+    ('BNE', 'Australia/Brisbane'),
+    ('BOG', 'America/Bogota'),
+    ('BOM', 'Asia/Kolkata'),
+    ('BOS', 'America/New_York'),
+    ('BRU', 'Europe/Brussels'),
+    ('CAI', 'Africa/Cairo'),
+    ('CDG', 'Europe/Paris'),
+    ('CGK', 'Asia/Jakarta'),
+    ('CGN', 'Europe/Berlin'),
+    ('CMN', 'Africa/Casablanca'),
+    ('CPH', 'Europe/Copenhagen'),
+    ('CPT', 'Africa/Johannesburg'),
+    ('DEL', 'Asia/Kolkata'),
+    ('DFW', 'America/Chicago'),
+    ('DOH', 'Asia/Qatar'),
+    ('DPS', 'Asia/Makassar'),
+    ('DUB', 'Europe/Dublin'),
+    ('DXB', 'Asia/Dubai'),
+    ('EDI', 'Europe/London'),
+    ('EZE', 'America/Argentina/Buenos_Aires'),
+    ('FCO', 'Europe/Rome'),
+    ('FRA', 'Europe/Berlin'),
+    ('GRU', 'America/Sao_Paulo'),
+    ('HAM', 'Europe/Berlin'),
+    ('HKG', 'Asia/Hong_Kong'),
+    ('HND', 'Asia/Tokyo'),
+    ('ICN', 'Asia/Seoul'),
+    ('IST', 'Europe/Istanbul'),
+    ('JFK', 'America/New_York'),
+    ('JNB', 'Africa/Johannesburg'),
+    ('KUL', 'Asia/Kuala_Lumpur'),
+    ('LAX', 'America/Los_Angeles'),
+    ('LDN', 'Europe/London'),
+    ('LGW', 'Europe/London'),
+    ('LHR', 'Europe/London'),
+    ('LIM', 'America/Lima'),
+    ('LIS', 'Europe/Lisbon'),
+    ('LOS', 'Africa/Lagos'),
+    ('MAD', 'Europe/Madrid'),
+    ('MAN', 'Europe/London'),
+    ('MEL', 'Australia/Melbourne'),
+    ('MEX', 'America/Mexico_City'),
+    ('MIA', 'America/New_York'),
+    ('MNL', 'Asia/Manila'),
+    ('MUC', 'Europe/Berlin'),
+    ('NBO', 'Africa/Nairobi'),
+    ('NRT', 'Asia/Tokyo'),
+    ('ORD', 'America/Chicago'),
+    ('PAR', 'Europe/Paris'),
+    ('PEK', 'Asia/Shanghai'),
+    ('PER', 'Australia/Perth'),
+    ('PRG', 'Europe/Prague'),
+    ('PVG', 'Asia/Shanghai'),
+    ('RUH', 'Asia/Riyadh'),
+    ('SCL', 'America/Santiago'),
+    ('SEA', 'America/Los_Angeles'),
+    ('SFO', 'America/Los_Angeles'),
+    ('SIN', 'Asia/Singapore'),
+    ('SYD', 'Australia/Sydney'),
+    ('TLV', 'Asia/Jerusalem'),
+    ('TPE', 'Asia/Taipei'),
+    ('VIE', 'Europe/Vienna'),
+    ('YVR', 'America/Vancouver'),
+    ('YYZ', 'America/Toronto'),
+    ('ZRH', 'Europe/Zurich')
+) as v (code, tz)
+where a.code = v.code and (a.tz is null or a.tz <> v.tz);
+
+-- Anything not in the list above (an airport added by hand through the
+-- admin route form) falls back to UTC rather than to the server's zone,
+-- so the value is at least explicit and stable.
+update public.airports set tz = 'UTC' where tz is null;
+alter table public.airports alter column tz set not null;
+alter table public.airports alter column tz set default 'UTC';
+
+-- Converts a wall-clock local time at an airport into the correct instant.
+-- Seeds read far better this way, and more importantly they stop depending
+-- on the server's timezone: `now() + time '21:35'` produced a different
+-- real departure depending on when and where the seed happened to run.
+create or replace function public.local_ts(p_code text, p_days int, p_time time)
+returns timestamptz as $$
+  select ((current_date + p_days) + p_time) at time zone coalesce(
+    (select tz from public.airports where code = p_code), 'UTC'
+  );
+$$ language sql stable;
+
+-- A departure is identified by its number and the pair of airports it
+-- connects. Without this the seed had no conflict target, so re-running it
+-- inserted a second copy of all 104 flights rather than refreshing them.
+--
+-- Any project that did run the old seed twice already holds those copies,
+-- and the unique index below cannot be built over them. Duplicates are
+-- collapsed first, keeping the oldest row of each group and removing only
+-- copies nothing has booked — a duplicate carrying a booking is left in
+-- place, and the index creation will report it rather than destroy it.
+delete from public.flights f
+where exists (
+  select 1 from public.flights keep
+  where keep.flight_number = f.flight_number
+    and keep.from_code = f.from_code
+    and keep.to_code = f.to_code
+    and (keep.created_at, keep.id) < (f.created_at, f.id)
+)
+and not exists (select 1 from public.bookings b where b.flight_id = f.id);
+
+create unique index if not exists flights_natural_key_idx
+  on public.flights (flight_number, from_code, to_code);
+
 create index if not exists flights_route_idx on public.flights (from_code, to_code, depart_at);
 create index if not exists flights_mode_route_idx on public.flights (mode, from_code, to_code, depart_at);
 
@@ -165,33 +293,148 @@ alter table public.payments add constraint payments_method_check
 
 -- Called once payment succeeds. Writes the booking + its payment row in one
 -- shot so a booking can never exist without a matching payment record.
+-- Parameter renamed (p_total_amount -> p_expected_amount). Postgres will
+-- not rename a parameter via create or replace, so the old definition is
+-- dropped explicitly; the signature itself is unchanged.
+drop function if exists public.create_booking(uuid, text, jsonb, text[], text, numeric, text, text);
+
+-- Books seats with real inventory integrity. Everything that decides
+-- whether this booking is allowed happens behind a row lock on the flight,
+-- so concurrent checkouts for the same flight are serialized rather than
+-- racing each other.
+--
+-- Three things this deliberately does NOT trust the caller for:
+--   * the price — recomputed from flights.price and the current service
+--     fee, because the old signature took the browser's number and wrote
+--     it straight to payments (a crafted request bought any fare for $1)
+--   * seat availability — checked against seats already sold on this
+--     flight, so two people cannot both be confirmed into 12A
+--   * remaining capacity — seats_left is now actually decremented, where
+--     before it was seeded once and never written again
+--
+-- p_expected_amount is what the browser believed the total was. It is
+-- compared against the server's figure and rejected on mismatch, so a
+-- stale price (fare changed while the traveler sat on the payment step)
+-- surfaces as an explicit error instead of silently charging a different
+-- number than the one displayed.
 create or replace function public.create_booking(
   p_flight_id uuid,
   p_guest_email text,
   p_passengers jsonb,
   p_seats text[],
   p_cabin text,
-  p_total_amount numeric,
+  p_expected_amount numeric,
   p_method text,
   p_transaction_id text
 )
 returns jsonb as $$
 declare
   v_booking public.bookings;
+  v_flight public.flights;
   v_uid uuid := auth.uid();
+  v_seat_count int;
+  v_fee numeric;
+  v_total numeric;
+  v_clash text[];
 begin
+  -- Lock the flight for the rest of this transaction. Every availability
+  -- decision below depends on it, so this is what makes the check-then-act
+  -- sequence safe under concurrency.
+  select * into v_flight
+  from public.flights
+  where id = p_flight_id
+  for update;
+
+  if v_flight.id is null then
+    return jsonb_build_object('success', false, 'message', 'That flight is no longer available.');
+  end if;
+
+  if v_flight.status in ('cancelled', 'departed', 'in_air', 'landed') then
+    return jsonb_build_object('success', false, 'message', 'That departure is no longer open for booking.');
+  end if;
+
+  -- Seats are optional (not every mode assigns them), so capacity is driven
+  -- by the passenger count and seats are validated only when supplied.
+  v_seat_count := greatest(jsonb_array_length(coalesce(p_passengers, '[]'::jsonb)), 1);
+
+  if v_flight.seats_left < v_seat_count then
+    return jsonb_build_object(
+      'success', false,
+      'message', format('Only %s seat(s) left on this departure.', v_flight.seats_left)
+    );
+  end if;
+
+  -- Already-sold seats on this flight. Array overlap is safe here because
+  -- the flight row above is locked, so no competing booking can commit
+  -- between this check and the insert below.
+  if array_length(p_seats, 1) > 0 then
+    select array_agg(distinct s) into v_clash
+    from public.bookings b, unnest(b.seats) s
+    where b.flight_id = p_flight_id
+      and b.status in ('pending', 'confirmed')
+      and s = any (p_seats);
+
+    if v_clash is not null and array_length(v_clash, 1) > 0 then
+      return jsonb_build_object(
+        'success', false,
+        'message', format('Seat(s) %s have just been taken. Please pick another.', array_to_string(v_clash, ', '))
+      );
+    end if;
+  end if;
+
+  -- Authoritative price. Mirrors the breakdown shown at checkout
+  -- (per-seat fare x travelers, plus the platform service fee) but is
+  -- derived entirely from server-side state.
+  select coalesce(service_fee_percent, 0) into v_fee from public.platform_settings where id = 1;
+  v_total := round(v_flight.price * v_seat_count * (1 + coalesce(v_fee, 0) / 100));
+
+  if p_expected_amount is not null and round(p_expected_amount) <> v_total then
+    return jsonb_build_object(
+      'success', false,
+      'message', 'The fare for this departure has changed since this request was made. Review the new total and try again.',
+      'expected', p_expected_amount,
+      'actual', v_total
+    );
+  end if;
+
   insert into public.bookings (user_id, guest_email, flight_id, passengers, seats, cabin, total_amount, status)
-  values (v_uid, lower(p_guest_email), p_flight_id, p_passengers, p_seats, p_cabin, p_total_amount, 'confirmed')
+  values (v_uid, lower(p_guest_email), p_flight_id, p_passengers, p_seats, p_cabin, v_total, 'confirmed')
   returning * into v_booking;
 
   insert into public.payments (booking_id, user_id, guest_email, amount, method, status, simulated_outcome, transaction_id)
-  values (v_booking.id, v_uid, lower(p_guest_email), p_total_amount, p_method, 'completed', 'success', p_transaction_id);
+  values (v_booking.id, v_uid, lower(p_guest_email), v_total, p_method, 'completed', 'success', p_transaction_id);
 
-  return jsonb_build_object('success', true, 'reference', v_booking.reference, 'id', v_booking.id);
+  -- The inventory movement this function previously never performed.
+  update public.flights
+  set seats_left = seats_left - v_seat_count
+  where id = p_flight_id;
+
+  return jsonb_build_object(
+    'success', true,
+    'reference', v_booking.reference,
+    'id', v_booking.id,
+    'total', v_total
+  );
 end;
 $$ language plpgsql security definer set search_path = public;
 
 grant execute on function public.create_booking(uuid, text, jsonb, text[], text, numeric, text, text) to anon, authenticated;
+
+-- Returns seats already sold on a departure so the seat map can render them
+-- as taken rather than letting a traveler pick one and fail at payment.
+create or replace function public.get_taken_seats(p_flight_id uuid)
+returns text[] as $$
+  select coalesce(array_agg(distinct s), '{}'::text[])
+  from public.bookings b, unnest(b.seats) s
+  where b.flight_id = p_flight_id
+    and b.status in ('pending', 'confirmed');
+$$ language sql stable security definer set search_path = public;
+
+grant execute on function public.get_taken_seats(uuid) to anon, authenticated;
+
+-- Makes the seat-overlap lookup above an index scan rather than a scan of
+-- every booking on the flight.
+create index if not exists bookings_seats_gin_idx on public.bookings using gin (seats);
 
 -- Looks up a booking by reference + the email that booked it — the only
 -- credential a guest has, so this is how /manage-booking works without

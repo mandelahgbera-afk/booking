@@ -14,6 +14,7 @@ export const Confirmation = ({
   outcome,
   reference,
   emailWarning,
+  bookingError,
 }: {
   offer: FlightOffer;
   passengers: Passenger[];
@@ -22,6 +23,8 @@ export const Confirmation = ({
   outcome: PaymentOutcome;
   reference: string;
   emailWarning?: string;
+  /** Inventory refused the booking (sold out, seat taken, fare moved). */
+  bookingError?: string;
 }) => {
   const statusMeta = {
     success: {
@@ -47,6 +50,12 @@ export const Confirmation = ({
     },
   }[outcome];
 
+  // An inventory refusal is not a declined card, and saying "your card was
+  // not charged / try another method" would send the traveler round a loop
+  // that cannot succeed. Give them the actual reason instead.
+  const heading = bookingError ? "Booking not completed" : statusMeta.title;
+  const bodyText = bookingError ?? statusMeta.body;
+
   const Icon = statusMeta.icon;
   const mode = offer.mode ?? "flight";
   const ModeIcon = mode === "train" ? TrainFront : mode === "bus" ? Bus : PlaneTakeoff;
@@ -60,8 +69,8 @@ export const Confirmation = ({
         <Icon size={32} className={statusMeta.color} />
       </div>
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">{statusMeta.title}</h2>
-        <p className="mt-2 text-sm text-slate-500">{statusMeta.body}</p>
+        <h2 className="text-2xl font-bold text-slate-900">{heading}</h2>
+        <p className="mt-2 text-sm text-slate-500">{bodyText}</p>
       </div>
 
       {emailWarning && (

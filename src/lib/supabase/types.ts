@@ -206,8 +206,13 @@ export type ClaimFirstAdminResult =
   | { success: false; message: string };
 
 export type CreateBookingResult =
-  | { success: true; reference: string; id: string }
-  | { success: false; message: string };
+  // `total` is the server's authoritative figure, recomputed from the
+  // flight and the current service fee rather than taken from the browser.
+  | { success: true; reference: string; id: string; total: number }
+  // Also covers inventory refusals (sold out, seat already taken) and a
+  // fare that moved between checkout and payment, where `expected` and
+  // `actual` carry the two totals.
+  | { success: false; message: string; expected?: number; actual?: number };
 
 export type BookingLookupResult =
   | {
@@ -266,11 +271,15 @@ export type Database = {
           p_passengers: BookingPassenger[];
           p_seats: string[];
           p_cabin: string;
-          p_total_amount: number;
+          p_expected_amount: number;
           p_method: string;
           p_transaction_id: string;
         };
         Returns: CreateBookingResult;
+      };
+      get_taken_seats: {
+        Args: { p_flight_id: string };
+        Returns: string[];
       };
       get_booking_by_reference: {
         Args: { p_reference: string; p_email: string };

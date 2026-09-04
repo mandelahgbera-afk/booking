@@ -18,17 +18,28 @@ const STEPS = ["Travelers", "Seats", "Payment", "Done"] as const;
 export const BookingFlow = ({
   offer,
   settings,
+  takenSeats = [],
   isRetry = false,
 }: {
   offer: FlightOffer;
   settings: PlatformSettingsRow;
+  /** Seats already sold on this departure, from the database. */
+  takenSeats?: string[];
   isRetry?: boolean;
 }) => {
   const [step, setStep] = useState(0);
   const [passengers, setPassengers] = useState<Passenger[]>([{ name: "", email: "" }]);
   const [seats, setSeats] = useState<string[]>([]);
   const [result, setResult] = useState<
-    { outcome: PaymentOutcome; reference: string; emailWarning?: string } | null
+    {
+      outcome: PaymentOutcome;
+      reference: string;
+      emailWarning?: string;
+      // Set when the database refused the booking outright — sold out,
+      // seats taken mid-checkout, or a fare that moved. Distinct from a
+      // declined payment, and shown in place of a confirmation.
+      bookingError?: string;
+    } | null
   >(
     null
   );
@@ -81,7 +92,12 @@ export const BookingFlow = ({
 
         {step === 0 && <PassengerForm passengers={passengers} onChange={setPassengers} />}
         {step === 1 && (
-          <SeatMap count={passengers.length} selected={seats} onChange={setSeats} />
+          <SeatMap
+            count={passengers.length}
+            selected={seats}
+            onChange={setSeats}
+            takenSeats={takenSeats}
+          />
         )}
         {step === 2 && reviewRequestId && (
           <PendingPaymentReview
@@ -122,7 +138,7 @@ export const BookingFlow = ({
             }}
             onResult={async (outcome, transactionId, method) => {
               if (outcome === "success") {
-                const { reference, emailWarning } = await confirmBooking({
+                const { reference, emailWarning, error } = await confirmBooking({
                   offer,
                   passengers,
                   seats,
@@ -130,7 +146,14 @@ export const BookingFlow = ({
                   method,
                   transactionId,
                 });
-                setResult({ outcome, reference, emailWarning });
+                // The payment cleared but inventory would not honour the
+                // booking. Showing a confirmation here would hand over a
+                // reference for a seat someone else already has.
+                if (error) {
+                  setResult({ outcome: "fail", reference, bookingError: error });
+                } else {
+                  setResult({ outcome, reference, emailWarning });
+                }
               } else {
                 setResult({ outcome, reference: transactionId.slice(4, 10).toUpperCase() });
                 if (outcome === "fail") {
@@ -150,6 +173,7 @@ export const BookingFlow = ({
             outcome={result.outcome}
             reference={result.reference}
             emailWarning={result.emailWarning}
+            bookingError={result.bookingError}
           />
         )}
 
