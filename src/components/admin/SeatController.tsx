@@ -54,11 +54,12 @@ export const SeatController = ({
   }, [open]);
 
   const bookedSet = new Set(state?.booked ?? []);
+  const heldSet = new Set(state?.held ?? []);
 
   const toggle = (seat: string) => {
     // A sold seat belongs to a traveler; blocking it would put two claims
     // on one seat, so the database refuses it and so does this.
-    if (bookedSet.has(seat)) return;
+    if (bookedSet.has(seat) || heldSet.has(seat)) return;
     setError(null);
     setBlocked((prev) => {
       const next = new Set(prev);
@@ -128,6 +129,9 @@ export const SeatController = ({
                   <span className="flex items-center gap-1.5">
                     <span className="h-3 w-3 rounded bg-slate-300" /> Sold
                   </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-3 w-3 rounded bg-amber-300" /> Held (awaiting review)
+                  </span>
                 </div>
 
                 <div className="mt-4 space-y-1.5">
@@ -139,20 +143,29 @@ export const SeatController = ({
                       {COLS.map((col, i) => {
                         const seat = `${row}${col}`;
                         const isBooked = bookedSet.has(seat);
+                        const isHeld = heldSet.has(seat);
                         const isBlocked = blocked.has(seat);
+                        const locked = isBooked || isHeld;
                         return (
                           <button
                             key={seat}
                             type="button"
-                            disabled={isBooked}
+                            disabled={locked}
                             onClick={() => toggle(seat)}
-                            title={isBooked ? `${seat} — sold to a traveler` : seat}
+                            title={
+                              isBooked
+                                ? `${seat} — sold to a traveler`
+                                : isHeld
+                                  ? `${seat} — held by a payment request awaiting your review`
+                                  : seat
+                            }
                             className={cn(
                               "h-7 w-7 rounded-md text-[10px] font-semibold transition-all",
                               i === 2 && "mr-2",
                               isBooked && "cursor-not-allowed bg-slate-300 text-slate-500",
-                              !isBooked && isBlocked && "bg-orange-500 text-white shadow-sm",
-                              !isBooked && !isBlocked && "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                              isHeld && !isBooked && "cursor-not-allowed bg-amber-300 text-amber-900",
+                              !locked && isBlocked && "bg-orange-500 text-white shadow-sm",
+                              !locked && !isBlocked && "bg-slate-100 text-slate-500 hover:bg-slate-200"
                             )}
                           >
                             {col}
@@ -165,7 +178,7 @@ export const SeatController = ({
 
                 <div className="mt-4 rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
                   {state.seatsLeft} of {state.seatsTotal} seats left on this departure ·{" "}
-                  {bookedSet.size} sold · {blocked.size} blocked
+                  {bookedSet.size} sold · {heldSet.size} held · {blocked.size} blocked
                 </div>
 
                 {error && (

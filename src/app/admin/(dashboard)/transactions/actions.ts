@@ -94,6 +94,10 @@ export async function resolvePaymentRequestAction(
           p_expected_amount: amount,
           p_method: m.method,
           p_transaction_id: `sim_${id.slice(0, 10)}`,
+          // This request is still 'pending' right now and is holding
+          // these exact seats, so it must not be treated as a rival
+          // claim on them.
+          p_exclude_request_id: id,
         });
 
         if (bErr || !bookingResult?.success) {

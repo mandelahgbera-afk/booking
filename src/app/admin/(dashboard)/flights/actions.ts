@@ -161,6 +161,9 @@ export async function setRouteStatus(
 export type SeatMapState = {
   booked: string[];
   blocked: string[];
+  /** Held by a payment request awaiting review — not sold yet, but not
+   *  available either. */
+  held: string[];
   seatsLeft: number | null;
   seatsTotal: number | null;
 };
@@ -168,7 +171,7 @@ export type SeatMapState = {
 /** Sold seats and admin-withheld seats for one departure, kept apart so the
  *  admin map can show sold ones as immovable. */
 export async function getFlightSeatMap(flightId: string): Promise<SeatMapState> {
-  const empty: SeatMapState = { booked: [], blocked: [], seatsLeft: null, seatsTotal: null };
+  const empty: SeatMapState = { booked: [], blocked: [], held: [], seatsLeft: null, seatsTotal: null };
   if (!isSupabaseConfigured) return empty;
   try {
     const supabase = await createClient();
@@ -177,6 +180,7 @@ export async function getFlightSeatMap(flightId: string): Promise<SeatMapState> 
     return {
       booked: data.booked ?? [],
       blocked: data.blocked ?? [],
+      held: data.held ?? [],
       seatsLeft: data.seats_left ?? null,
       seatsTotal: data.seats_total ?? null,
     };

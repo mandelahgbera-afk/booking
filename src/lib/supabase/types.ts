@@ -274,6 +274,7 @@ export type Database = {
           p_expected_amount: number;
           p_method: string;
           p_transaction_id: string;
+          p_exclude_request_id?: string;
         };
         Returns: CreateBookingResult;
       };
@@ -286,6 +287,8 @@ export type Database = {
         Returns: {
           booked: string[];
           blocked: string[];
+          /** Seats held by a payment request still awaiting review. */
+          held: string[];
           seats_left: number | null;
           seats_total: number | null;
         };
