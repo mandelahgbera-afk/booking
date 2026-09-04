@@ -211,3 +211,52 @@ export async function setBlockedSeats(
     return { ok: false, message: e instanceof Error ? e.message : "Could not update seats." };
   }
 }
+
+/** Fills a share of each selected departure's seat map — either withheld
+ *  (blocked) or written as demo bookings (sold). */
+export async function randomizeSeats(
+  flightIds: string[],
+  fill: "blocked" | "sold",
+  density: number
+): Promise<{ ok: boolean; message?: string; routes?: number; seats?: number }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Supabase is not configured." };
+  if (flightIds.length === 0) return { ok: false, message: "Select at least one departure." };
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("randomize_seats", {
+      p_flight_ids: flightIds,
+      p_fill: fill,
+      p_density: density,
+    });
+    if (error) return { ok: false, message: error.message };
+    if (!data?.success) return { ok: false, message: data?.message ?? "Could not fill seats." };
+
+    await logAdminAction("flight.seats_randomized", { fill, density, routes: data.routes });
+    revalidatePath("/admin/flights");
+    return { ok: true, routes: data.routes, seats: data.seats };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "Could not fill seats." };
+  }
+}
+
+/** Releases every admin-held seat and deletes demo bookings, returning the
+ *  seats to inventory. Real bookings are left alone. */
+export async function clearDemoOccupancy(
+  flightIds?: string[]
+): Promise<{ ok: boolean; message?: string; bookings?: number }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Supabase is not configured." };
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("clear_demo_occupancy", {
+      p_flight_ids: flightIds && flightIds.length > 0 ? flightIds : undefined,
+    });
+    if (error) return { ok: false, message: error.message };
+    if (!data?.success) return { ok: false, message: data?.message ?? "Could not clear." };
+
+    await logAdminAction("flight.demo_occupancy_cleared", { bookings: data.bookings });
+    revalidatePath("/admin/flights");
+    return { ok: true, bookings: data.bookings };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "Could not clear." };
+  }
+}

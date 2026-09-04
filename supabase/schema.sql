@@ -520,6 +520,165 @@ $$ language plpgsql security definer set search_path = public;
 
 grant execute on function public.set_blocked_seats(uuid, text[]) to authenticated;
 
+-- Demo occupancy created by the admin bulk tools, flagged so it can be
+-- removed again without taking real bookings with it. Staging a departure
+-- to look realistically sold is useful; leaving that data indistinguishable
+-- from real revenue is not.
+alter table public.bookings add column if not exists is_demo boolean not null default false;
+alter table public.payments add column if not exists is_demo boolean not null default false;
+create index if not exists bookings_is_demo_idx on public.bookings (is_demo) where is_demo;
+
+-- Fills a random share of each selected departure's seat map, either by
+-- withholding seats (blocked) or by writing demo bookings against them
+-- (sold). Blocked leaves the ledger untouched; sold produces a booking and
+-- a payment so the figures downstream move the way they would in life.
+create or replace function public.randomize_seats(
+  p_flight_ids uuid[],
+  p_fill text,            -- 'blocked' | 'sold'
+  p_density numeric       -- share of still-free seats to fill, 0..1
+)
+returns jsonb as $$
+declare
+  v_id uuid;
+  v_flight public.flights;
+  v_all text[];
+  v_taken text[];
+  v_free text[];
+  v_pick text[];
+  v_n int;
+  v_routes int := 0;
+  v_seats int := 0;
+  v_booking public.bookings;
+begin
+  if not public.is_admin() then
+    return jsonb_build_object('success', false, 'message', 'Not authorised.');
+  end if;
+
+  if p_fill is null or p_fill not in ('blocked', 'sold') then
+    return jsonb_build_object('success', false, 'message', 'Fill must be blocked or sold.');
+  end if;
+
+  if p_flight_ids is null or array_length(p_flight_ids, 1) is null then
+    return jsonb_build_object('success', false, 'message', 'No departures selected.');
+  end if;
+
+  -- The same 8 x A-F grid both seat maps draw. Generating it here keeps the
+  -- randomizer from inventing seats the traveler can never see.
+  select array_agg(r::text || c order by r, c) into v_all
+  from generate_series(1, 8) r, unnest(array['A','B','C','D','E','F']) c;
+
+  foreach v_id in array p_flight_ids loop
+    select * into v_flight from public.flights where id = v_id for update;
+    continue when v_flight.id is null;
+
+    select coalesce(array_agg(distinct s), '{}'::text[]) into v_taken
+    from (
+      select unnest(b.seats) as s
+      from public.bookings b
+      where b.flight_id = v_id and b.status in ('pending', 'confirmed')
+      union
+      select unnest(v_flight.blocked_seats)
+    ) t;
+
+    select coalesce(array_agg(s), '{}'::text[]) into v_free
+    from unnest(v_all) s
+    where not (s = any (v_taken));
+
+    v_n := floor(least(greatest(coalesce(p_density, 0.3), 0), 1) * coalesce(array_length(v_free, 1), 0));
+    continue when v_n < 1;
+
+    select array_agg(s) into v_pick
+    from (select s from unnest(v_free) s order by random() limit v_n) x;
+
+    if p_fill = 'blocked' then
+      update public.flights
+      set blocked_seats = v_flight.blocked_seats || v_pick
+      where id = v_id;
+    else
+      -- Never sell more than the departure actually still has.
+      v_n := least(v_n, v_flight.seats_left);
+      continue when v_n < 1;
+      v_pick := v_pick[1:v_n];
+
+      insert into public.bookings
+        (guest_email, flight_id, passengers, seats, cabin, total_amount, status, is_demo)
+      values (
+        'demo@airfly.online',
+        v_id,
+        (select jsonb_agg(jsonb_build_object('name', 'Demo Traveler', 'email', 'demo@airfly.online', 'seat', s))
+         from unnest(v_pick) s),
+        v_pick,
+        v_flight.cabin,
+        round(v_flight.price * v_n),
+        'confirmed',
+        true
+      )
+      returning * into v_booking;
+
+      insert into public.payments
+        (booking_id, guest_email, amount, method, status, simulated_outcome, transaction_id, is_demo)
+      values (
+        v_booking.id, 'demo@airfly.online', round(v_flight.price * v_n),
+        'card', 'completed', 'success', 'demo_' || substr(v_booking.id::text, 1, 8), true
+      );
+
+      update public.flights set seats_left = seats_left - v_n where id = v_id;
+    end if;
+
+    v_routes := v_routes + 1;
+    v_seats := v_seats + v_n;
+  end loop;
+
+  return jsonb_build_object('success', true, 'routes', v_routes, 'seats', v_seats);
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function public.randomize_seats(uuid[], text, numeric) to authenticated;
+
+-- Undoes the above: clears every admin-held seat and deletes demo bookings,
+-- returning the sold seats to inventory. Real bookings are untouched.
+create or replace function public.clear_demo_occupancy(p_flight_ids uuid[] default null)
+returns jsonb as $$
+declare
+  v_seats int := 0;
+  v_bookings int := 0;
+begin
+  if not public.is_admin() then
+    return jsonb_build_object('success', false, 'message', 'Not authorised.');
+  end if;
+
+  -- Give the seats back before the rows that held them disappear.
+  update public.flights f
+  set seats_left = least(
+    f.seats_total,
+    f.seats_left + coalesce((
+      select sum(coalesce(array_length(b.seats, 1), 0))
+      from public.bookings b
+      where b.flight_id = f.id and b.is_demo and b.status in ('pending', 'confirmed')
+    ), 0)
+  )
+  where (p_flight_ids is null or f.id = any (p_flight_ids));
+
+  with gone as (
+    delete from public.bookings b
+    where b.is_demo and (p_flight_ids is null or b.flight_id = any (p_flight_ids))
+    returning 1
+  )
+  select count(*) into v_bookings from gone;
+
+  update public.flights
+  set blocked_seats = '{}'
+  where (p_flight_ids is null or id = any (p_flight_ids))
+    and array_length(blocked_seats, 1) > 0;
+
+  get diagnostics v_seats = row_count;
+
+  return jsonb_build_object('success', true, 'bookings', v_bookings, 'routes', v_seats);
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function public.clear_demo_occupancy(uuid[]) to authenticated;
+
 -- Makes the seat-overlap lookup above an index scan rather than a scan of
 -- every booking on the flight.
 create index if not exists bookings_seats_gin_idx on public.bookings using gin (seats);

@@ -290,6 +290,18 @@ export type Database = {
           seats_total: number | null;
         };
       };
+      randomize_seats: {
+        Args: { p_flight_ids: string[]; p_fill: string; p_density: number };
+        Returns:
+          | { success: true; routes: number; seats: number }
+          | { success: false; message: string };
+      };
+      clear_demo_occupancy: {
+        Args: { p_flight_ids?: string[] };
+        Returns:
+          | { success: true; bookings: number; routes: number }
+          | { success: false; message: string };
+      };
       set_blocked_seats: {
         Args: { p_flight_id: string; p_seats: string[] };
         Returns: { success: true; blocked: string[] } | { success: false; message: string };
