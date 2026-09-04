@@ -153,3 +153,61 @@ export async function setRouteStatus(
     return { ok: false, message: err instanceof Error ? err.message : "Failed to update status." };
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Seat control
+// ─────────────────────────────────────────────────────────────────────────
+
+export type SeatMapState = {
+  booked: string[];
+  blocked: string[];
+  seatsLeft: number | null;
+  seatsTotal: number | null;
+};
+
+/** Sold seats and admin-withheld seats for one departure, kept apart so the
+ *  admin map can show sold ones as immovable. */
+export async function getFlightSeatMap(flightId: string): Promise<SeatMapState> {
+  const empty: SeatMapState = { booked: [], blocked: [], seatsLeft: null, seatsTotal: null };
+  if (!isSupabaseConfigured) return empty;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("get_seat_map", { p_flight_id: flightId });
+    if (error || !data) return empty;
+    return {
+      booked: data.booked ?? [],
+      blocked: data.blocked ?? [],
+      seatsLeft: data.seats_left ?? null,
+      seatsTotal: data.seats_total ?? null,
+    };
+  } catch {
+    return empty;
+  }
+}
+
+export async function setBlockedSeats(
+  flightId: string,
+  seats: string[]
+): Promise<{ ok: boolean; message?: string }> {
+  if (!isSupabaseConfigured) {
+    return { ok: false, message: "Supabase is not configured." };
+  }
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("set_blocked_seats", {
+      p_flight_id: flightId,
+      p_seats: seats,
+    });
+    if (error) return { ok: false, message: error.message };
+    if (!data?.success) return { ok: false, message: data?.message ?? "Could not update seats." };
+
+    await logAdminAction("flight.seats_blocked", { flightId, count: seats.length });
+    revalidatePath("/admin/flights");
+    // The traveler-facing seat map reads the same data, so it has to drop
+    // its cached copy or a blocked seat stays selectable until it expires.
+    revalidatePath(`/booking/${flightId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "Could not update seats." };
+  }
+}

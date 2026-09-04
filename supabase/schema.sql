@@ -94,6 +94,13 @@ end $$;
 alter table public.flights add constraint flights_mode_check
   check (mode in ('flight', 'train', 'bus'));
 
+-- Seats an admin has taken out of sale on a departure: crew rest, a block
+-- held for a group, equipment out of service, or simply staging a demo so
+-- a flight looks realistically sold. These sit alongside seats sold by
+-- real bookings, and both are unavailable to a traveler for the same
+-- reason — the seat is not free.
+alter table public.flights add column if not exists blocked_seats text[] not null default '{}';
+
 -- Airport-local time. Every departure and arrival clock time is rendered in
 -- the airport's own zone: a flight leaving JFK at 09:00 leaves at 09:00 in
 -- New York, and showing that as UTC (or in whatever zone the viewer's
@@ -368,11 +375,17 @@ begin
   -- the flight row above is locked, so no competing booking can commit
   -- between this check and the insert below.
   if array_length(p_seats, 1) > 0 then
+    -- Sold seats and seats an admin has withdrawn from sale are both
+    -- unavailable, and for the traveler they fail identically.
     select array_agg(distinct s) into v_clash
-    from public.bookings b, unnest(b.seats) s
-    where b.flight_id = p_flight_id
-      and b.status in ('pending', 'confirmed')
-      and s = any (p_seats);
+    from (
+      select unnest(b.seats) as s
+      from public.bookings b
+      where b.flight_id = p_flight_id and b.status in ('pending', 'confirmed')
+      union
+      select unnest(v_flight.blocked_seats)
+    ) taken
+    where s = any (p_seats);
 
     if v_clash is not null and array_length(v_clash, 1) > 0 then
       return jsonb_build_object(
@@ -420,17 +433,92 @@ $$ language plpgsql security definer set search_path = public;
 
 grant execute on function public.create_booking(uuid, text, jsonb, text[], text, numeric, text, text) to anon, authenticated;
 
--- Returns seats already sold on a departure so the seat map can render them
--- as taken rather than letting a traveler pick one and fail at payment.
+-- ─────────────────────────────────────────────────────────────────────────
+-- Seat control
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- Every seat unavailable on a departure, whichever way it became
+-- unavailable. This replaces the earlier bookings-only version.
 create or replace function public.get_taken_seats(p_flight_id uuid)
 returns text[] as $$
-  select coalesce(array_agg(distinct s), '{}'::text[])
-  from public.bookings b, unnest(b.seats) s
-  where b.flight_id = p_flight_id
-    and b.status in ('pending', 'confirmed');
+  select coalesce(
+    (
+      select array_agg(distinct seat)
+      from (
+        select unnest(b.seats) as seat
+        from public.bookings b
+        where b.flight_id = p_flight_id
+          and b.status in ('pending', 'confirmed')
+        union
+        select unnest(f.blocked_seats)
+        from public.flights f
+        where f.id = p_flight_id
+      ) all_seats
+    ),
+    '{}'::text[]
+  );
 $$ language sql stable security definer set search_path = public;
 
 grant execute on function public.get_taken_seats(uuid) to anon, authenticated;
+
+-- Splits the two so the admin seat map can show sold seats as immovable
+-- and blocked seats as the ones it is allowed to toggle.
+create or replace function public.get_seat_map(p_flight_id uuid)
+returns jsonb as $$
+  select jsonb_build_object(
+    'booked', coalesce((
+      select array_agg(distinct s)
+      from public.bookings b, unnest(b.seats) s
+      where b.flight_id = p_flight_id and b.status in ('pending', 'confirmed')
+    ), '{}'::text[]),
+    'blocked', coalesce((
+      select blocked_seats from public.flights where id = p_flight_id
+    ), '{}'::text[]),
+    'seats_left', (select seats_left from public.flights where id = p_flight_id),
+    'seats_total', (select seats_total from public.flights where id = p_flight_id)
+  );
+$$ language sql stable security definer set search_path = public;
+
+grant execute on function public.get_seat_map(uuid) to anon, authenticated;
+
+-- Admin-only. Refuses to block a seat that is already sold, so the two
+-- lists can never disagree about who holds a seat.
+create or replace function public.set_blocked_seats(p_flight_id uuid, p_seats text[])
+returns jsonb as $$
+declare
+  v_conflict text[];
+begin
+  if not public.is_admin() then
+    return jsonb_build_object('success', false, 'message', 'Not authorised.');
+  end if;
+
+  select array_agg(distinct s) into v_conflict
+  from public.bookings b, unnest(b.seats) s
+  where b.flight_id = p_flight_id
+    and b.status in ('pending', 'confirmed')
+    and s = any (coalesce(p_seats, '{}'::text[]));
+
+  if v_conflict is not null and array_length(v_conflict, 1) > 0 then
+    return jsonb_build_object(
+      'success', false,
+      'message', format('Seat(s) %s are already sold to a traveler and cannot be blocked.',
+                        array_to_string(v_conflict, ', '))
+    );
+  end if;
+
+  update public.flights
+  set blocked_seats = coalesce(p_seats, '{}'::text[])
+  where id = p_flight_id;
+
+  if not found then
+    return jsonb_build_object('success', false, 'message', 'No such departure.');
+  end if;
+
+  return jsonb_build_object('success', true, 'blocked', coalesce(p_seats, '{}'::text[]));
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function public.set_blocked_seats(uuid, text[]) to authenticated;
 
 -- Makes the seat-overlap lookup above an index scan rather than a scan of
 -- every booking on the flight.

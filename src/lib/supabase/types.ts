@@ -281,6 +281,19 @@ export type Database = {
         Args: { p_flight_id: string };
         Returns: string[];
       };
+      get_seat_map: {
+        Args: { p_flight_id: string };
+        Returns: {
+          booked: string[];
+          blocked: string[];
+          seats_left: number | null;
+          seats_total: number | null;
+        };
+      };
+      set_blocked_seats: {
+        Args: { p_flight_id: string; p_seats: string[] };
+        Returns: { success: true; blocked: string[] } | { success: false; message: string };
+      };
       get_booking_by_reference: {
         Args: { p_reference: string; p_email: string };
         Returns: BookingLookupResult;

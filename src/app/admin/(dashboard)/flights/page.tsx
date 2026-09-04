@@ -1,6 +1,7 @@
 import { getAdminFlights, getAirlines, getAirports } from "@/lib/data";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { AddRouteForm } from "@/components/admin/AddRouteForm";
+import { SeatController } from "@/components/admin/SeatController";
 import { RouteStatusToggle } from "@/components/admin/RouteStatusToggle";
 import { formatCurrency } from "@/lib/utils";
 
@@ -59,7 +60,13 @@ export default async function AdminFlightsPage() {
                     <StatusBadge status={r.status} />
                   </td>
                   <td className="p-4">
-                    <RouteStatusToggle id={r.id} status={r.status} />
+                    <div className="flex items-center gap-3">
+                      <SeatController
+                        flightId={r.id}
+                        label={`${r.flightNumber} · ${r.from.code} → ${r.to.code}`}
+                      />
+                      <RouteStatusToggle id={r.id} status={r.status} />
+                    </div>
                   </td>
                 </tr>
               ))}
